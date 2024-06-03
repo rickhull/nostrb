@@ -101,3 +101,41 @@ lisa.sign(profile)
 
 puts "Event Object"
 p following.object
+
+puts
+puts
+puts "maggie has an adorable secret key"
+puts
+
+maggie = Nostr::User.new(name: 'Maggie', sk: ("\x00" * 16 + "\xFF" * 16).b)
+babble = maggie.post("ga ga goo ga *squeal*")
+
+puts "Serialized"
+p babble.serialize
+puts
+
+maggie.sign(babble)
+
+puts "Event Object"
+p babble.object
+
+puts
+puts
+puts "lisa follows her family"
+puts
+
+lisa = Nostr::User.new(name: 'Lisa')
+following = lisa.follows({ marge.pubkey => ['wss://marge.relay/', 'mom'],
+                           homer.pubkey => ['wss://homer.relay/', 'dad'],
+                           bart.pubkey  => ['wss://bart.relay/', 'bart'],
+                           maggie.pubkey => ['wss://maggie.relay/', 'maggie'],
+                         })
+
+puts "Serialized"
+p following.serialize
+puts
+
+lisa.sign(profile)
+
+puts "Event Object"
+p following.object
