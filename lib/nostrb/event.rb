@@ -29,10 +29,11 @@ module Nostr
     # 1a. generate content: "hello world"
     # 1b. set kind
     # 1c. set tags
-    # 2. timestamp
-    # 3. generate id
-    #
-    # 4. sign (requires id and priv key)
+    # 2. digest:
+    # 2a. timestamp
+    # 2b. generate id: SHA256(json_array)
+    # 3. using private key:
+    # 3a. sign SHA256(id)
 
     KINDS = {
       set_metadata: 0,
