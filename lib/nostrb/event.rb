@@ -42,10 +42,23 @@ module Nostr
       encrypted_direct_message: 4,
     }
 
+    # raise or return an integer up to 40_000
     def self.kind(val)
       case val
-      when 0, 1, 3, 4
-        val
+      when 1, 4
+        val # ok
+      when 0, 3
+        val # replaceable
+      when 5..999
+        val # ?
+      when 1000..10_000
+        val # regular
+      when 10_000..20_000
+        val # replaceable
+      when 20_000..30_000
+        val # ephemeral
+      when 30_000..40_000
+        val # parameterized replaceable
       when 2, :recommend_server
         raise(Error, "kind value 2 is deprecated")
       else
@@ -53,9 +66,33 @@ module Nostr
       end
     end
 
-    # returns 64 byte binary string
-    def self.sign(msg, secret_key)
-      SchnorrSig.sign(secret_key, msg)
+    # Input
+    #   name: string
+    #   (about: string)
+    #   (picture: string)
+    #   pubkey: 64 byte hexadecimal string, ASCII
+    # Output
+    #   Event
+    #     kind: 0, set_metadata
+    #     content: {name: <username>, about: <string>, picture: <url, string>}
+    def self.set_metadata(name:, about: '', picture: '', pubkey:, **kwargs)
+      hash = kwargs.merge({ name:, about:, picture:, })
+      self.new(Nostr.json(hash), kind: 0, pubkey:)
+    end
+
+    def self.text_note(content, pubkey:)
+      self.new(content, kind: 1, pubkey:)
+    end
+
+    # Input
+    #   pubkey_hsh: a ruby hash of the form
+    #     "deadbeef1234abcdef" => ["wss://alicerelay.com/", "alice"]
+    def self.contact_list(pubkey_hsh, pubkey:)
+      e = self.new('', kind: 3, pubkey:)
+      pubkey_hsh.each { |pubkey, ary|
+        e.ref_pubkey(Nostr.hex!(pubkey, 64), *(ary or Array.new))
+      }
+      e
     end
 
     attr_reader :content, :kind, :created_at, :pubkey, :signature
@@ -148,110 +185,4 @@ module Nostr
       add_tag('a', val, *rest)
     end
   end
-end
-
-
-if __FILE__ == $0
-  # keypair will be generated
-  marge = Nostr::User.new(name: 'Marge')
-  hello = marge.text_note('Hi Homie')
-
-  puts "Marge Simpson: hello world"
-  puts
-
-  puts "Serialized"
-  p hello.serialize
-  puts
-
-  marge.sign(hello)
-
-  puts "Event Object"
-  p hello.object
-
-  puts
-  puts
-  puts "goodnight"
-  puts
-
-  goodnight = marge.text_note('Goodnight Homer')
-  goodnight.ref_event(hello.id)
-
-  puts "Serialized"
-  p goodnight.serialize
-  puts
-
-  marge.sign(goodnight)
-
-  puts "Event Object"
-  p goodnight.object
-
-
-  puts
-  puts
-  puts "homer loves marge"
-  puts
-
-  # use our own secret key; pubkey will be generated
-  homer = Nostr::User.new(name: 'Homer', about: 'Homer Jay Simpson',
-                          sk: Random.bytes(32))
-  love_letter = homer.text_note("I love you Marge.\nLove, Homie")
-  love_letter.ref_pubkey(SchnorrSig.bin2hex(marge.pk))
-
-  puts "Serialized"
-  p love_letter.serialize
-  puts
-
-  homer.sign(love_letter)
-
-  puts "Event Object"
-  p love_letter.object
-
-
-  puts
-  puts
-  puts "bart uploads his profile"
-  puts
-
-
-  # we'll "bring our own" keypair
-  sk, pk = SchnorrSig.keypair
-  bart = Nostr::User.new(name: 'Bart',
-                         about: 'Bartholomew Jojo Simpson',
-                         picture: 'https://upload.wikimedia.org/wikipedia/en/a/aa/Bart_Simpson_200px.png',
-                         sk: sk, pk: pk)
-  profile = bart.set_metadata
-
-  puts "Serialized"
-  p profile.serialize
-  puts
-
-  bart.sign(profile)
-
-  puts "Event Object"
-  p profile.object
-  puts
-
-  puts "Profile Content"
-  puts profile.content
-
-
-  puts
-  puts
-  puts "lisa follows her family"
-  puts
-
-  lisa = Nostr::User.new(name: 'Lisa')
-  # keys = [marge.pk, homer.pk, bart.pk
-  following = lisa.contact_list({ marge.pubkey => [],
-                                  homer.pubkey => [],
-                                  bart.pubkey  => [], })
-
-  puts "Serialized"
-  p following.serialize
-  puts
-
-  lisa.sign(profile)
-
-  puts "Event Object"
-  p following.object
 end
