@@ -153,10 +153,9 @@ puts
 ############
 
 puts
-puts "lisa follows her family"
+puts "lisa follows her family, including maggie"
 puts
 
-lisa = Nostr::User.new(name: 'Lisa')
 following = lisa.follows({ marge.pubkey => ['wss://marge.relay/', 'mom'],
                            homer.pubkey => ['wss://homer.relay/', 'dad'],
                            bart.pubkey  => ['wss://bart.relay/', 'bart'],
