@@ -156,6 +156,10 @@ module Nostr
       }
     end
 
+    def json
+      Nostr.json(self.object)
+    end
+
     # add an array of 2+ strings to @tags
     def add_tag(tag, value, *rest)
       @tags.push([Nostr.typecheck!(tag, String),
