@@ -91,7 +91,7 @@ module Nostr
     def self.contact_list(pubkey_hsh, pubkey:)
       e = self.new('', kind: 3, pubkey:)
       pubkey_hsh.each { |pubkey, ary|
-        e.ref_pubkey(Nostr.hex!(pubkey, 64), *(ary or Array.new))
+        e.ref_pubkey(Nostr.hex(pubkey, 64), *(ary or Array.new))
       }
       e
     end
@@ -99,9 +99,9 @@ module Nostr
     attr_reader :content, :kind, :created_at, :pubkey, :signature
 
     def initialize(content = '', kind: :text_note, pubkey:)
-      @content = Nostr.typecheck!(content, String)
+      @content = Nostr.typecheck(content, String)
       @kind = Event.kind(kind)
-      @pubkey = Nostr.hex!(pubkey, 64)
+      @pubkey = Nostr.hex(pubkey, 64)
       @tags = []
       @created_at = nil
       @digest = nil
@@ -134,7 +134,7 @@ module Nostr
 
     # assign @signature, return 64 bytes binary
     def sign(secret_key)
-      Nostr.binary!(secret_key, 32)
+      Nostr.binary(secret_key, 32)
       @signature = SchnorrSig.sign(secret_key, self.digest(memo: true))
     end
 
@@ -162,31 +162,31 @@ module Nostr
 
     # add an array of 2+ strings to @tags
     def add_tag(tag, value, *rest)
-      @tags.push([Nostr.typecheck!(tag, String),
-                  Nostr.typecheck!(value, String)] +
-                 rest.each { |s| Nostr.typecheck!(s, String) })
+      @tags.push([Nostr.typecheck(tag, String),
+                  Nostr.typecheck(value, String)] +
+                 rest.each { |s| Nostr.typecheck(s, String) })
     end
 
     # add an event tag based on event id, hex encoded
     def ref_event(eid_hex, *rest)
-      add_tag('e', Nostr.hex!(eid_hex, 64), *rest)
+      add_tag('e', Nostr.hex(eid_hex, 64), *rest)
     end
 
     # add a pubkey tag based on pk, 32 bytes binary
     def ref_pk(pk, *rest)
-      add_tag('p', SchnorrSig.bin2hex(Nostr.binary!(pk, 32)), *rest)
+      add_tag('p', SchnorrSig.bin2hex(Nostr.binary(pk, 32)), *rest)
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
     def ref_pubkey(pk_hex, *rest)
-      add_tag('p', Nostr.hex!(pk_hex, 64), *rest)
+      add_tag('p', Nostr.hex(pk_hex, 64), *rest)
     end
 
     # kind: and one of [pubkey:, pk:] required
     def ref_replace(*rest, kind:, pubkey: nil, pk: nil, d_tag: nil)
       raise(ArgumentError, "public key required") if pubkey.nil? and pk.nil?
       pubkey ||= SchnorrSig.bin2hex(pk)
-      val = [Event.kind(kind), Nostr.hex!(pubkey, 64), d_tag].join(':')
+      val = [Event.kind(kind), Nostr.hex(pubkey, 64), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end

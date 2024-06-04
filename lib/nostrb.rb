@@ -28,14 +28,14 @@ module Nostr
   end
 
   # raise or return val
-  def self.typecheck!(val, cls)
+  def self.typecheck(val, cls)
     raise(TypeError, "#{cls} : #{val.inspect}") unless val.is_a? cls
     val
   end
 
   # raise or return str
-  def self.binary!(str, length = nil)
-    Nostr.typecheck!(str, String)
+  def self.binary(str, length = nil)
+    Nostr.typecheck(str, String)
     raise(EncodingError, str.encoding) if str.encoding != Encoding::BINARY
     if length and length != str.bytesize
       raise(SizeError, "#{length} : #{str.bytesize}")
@@ -44,8 +44,8 @@ module Nostr
   end
 
   # raise or return str
-  def self.hex!(str, length = nil)
-    Nostr.typecheck!(str, String)
+  def self.hex(str, length = nil)
+    Nostr.typecheck(str, String)
     raise(EncodingError, str.encoding) if str.encoding == Encoding::BINARY
     if length and length != str.bytesize
       raise(SizeError, "#{length} : #{str.bytesize}")

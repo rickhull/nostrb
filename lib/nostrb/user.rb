@@ -17,12 +17,12 @@ module Nostr
                 :sk, :pk, :pubkey
 
     def initialize(name:, about: '', picture: '', sk: nil, pk: nil)
-      @name = Nostr.typecheck!(name, String)
-      @about = Nostr.typecheck!(about, String)
-      @picture = Nostr.typecheck!(picture, String)
+      @name = Nostr.typecheck(name, String)
+      @about = Nostr.typecheck(about, String)
+      @picture = Nostr.typecheck(picture, String)
       if sk
-        @sk = Nostr.binary!(sk, 32)
-        @pk = pk.nil? ? SchnorrSig.pubkey(@sk) : Nostr.binary!(pk, 32)
+        @sk = Nostr.binary(sk, 32)
+        @pk = pk.nil? ? SchnorrSig.pubkey(@sk) : Nostr.binary(pk, 32)
       else
         @sk, @pk = SchnorrSig.keypair
       end
@@ -51,8 +51,8 @@ module Nostr
 
     def profile(**kwargs)
       Event.set_metadata(name: @name,
-                         about:   Nostr.typecheck!(@about, String),
-                         picture: Nostr.typecheck!(@picture, String),
+                         about:   Nostr.typecheck(@about, String),
+                         picture: Nostr.typecheck(@picture, String),
                          pubkey: @pubkey,
                          **kwargs)
     end
