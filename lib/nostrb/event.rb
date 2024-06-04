@@ -35,37 +35,6 @@ module Nostr
     # 3. using private key:
     # 3a. sign SHA256(id)
 
-    KINDS = {
-      set_metadata: 0,
-      text_note: 1,
-      # recommend_server: 2, deprecated
-      contact_list: 3,
-      encrypted_direct_message: 4,
-    }
-
-    # raise or return an integer up to 40_000
-    def self.kind(val)
-      case val
-      when 1, 4
-        val # ok
-      when 0, 3
-        val # replaceable
-      when 5..999
-        val # ?
-      when 1000..10_000
-        val # regular
-      when 10_000..20_000
-        val # replaceable
-      when 20_000..30_000
-        val # ephemeral
-      when 30_000..40_000
-        val # parameterized replaceable
-      when 2, :recommend_server
-        raise(Error, "kind value 2 is deprecated")
-      else
-        KINDS.fetch(val)
-      end
-    end
 
     # Input
     #   name: string
@@ -98,9 +67,9 @@ module Nostr
 
     attr_reader :content, :kind, :created_at, :pubkey, :signature
 
-    def initialize(content = '', kind: :text_note, pubkey:)
+    def initialize(content = '', kind:, pubkey:)
       @content = Nostr.typecheck(content, String)
-      @kind = Event.kind(kind)
+      @kind = Nostr.typecheck(kind, Integer)
       @pubkey = Nostr.hex(pubkey, 64)
       @tags = []
       @created_at = nil
@@ -186,7 +155,9 @@ module Nostr
     def ref_replace(*rest, kind:, pubkey: nil, pk: nil, d_tag: nil)
       raise(ArgumentError, "public key required") if pubkey.nil? and pk.nil?
       pubkey ||= SchnorrSig.bin2hex(pk)
-      val = [Event.kind(kind), Nostr.hex(pubkey, 64), d_tag].join(':')
+      val = [Nostr.typecheck(kind, Integer),
+             Nostr.hex(pubkey, 64),
+             d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end
