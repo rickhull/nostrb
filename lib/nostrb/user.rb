@@ -2,8 +2,7 @@ require 'nostrb'      # project
 require 'schnorr_sig' # gem
 
 module Nostr
-  # this class stores user profile info, keys, and is responsible for
-  # creating events (messages, etc)
+  # The User class stores profile and keys, and it can create posts, etc
   #   name: String, somehow globally unique, TBD
   #   about: String
   #   picture: String, url
@@ -11,7 +10,6 @@ module Nostr
   #   pk: String, public key, 32 bytes binary
   #   pubkey: String, public key, 64 bytes hexadecimal (ASCII)
   #   petname: String local name, no uniqueness constraint, can be overridden
-  #   relay_url: String, TBD
   class User
     attr_reader :name, :about, :picture,
                 :sk, :pk, :pubkey
@@ -27,11 +25,6 @@ module Nostr
         @sk, @pk = SchnorrSig.keypair
       end
       @pubkey = SchnorrSig.bin2hex @pk
-    end
-
-    # returns 64 bytes of hexadecimal, ASCII encoded
-    def pubkey
-      SchnorrSig.bin2hex @pk
     end
 
     # returns an Event
