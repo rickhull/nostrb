@@ -1,4 +1,4 @@
-require 'nostrb/event'
+require 'nostrb/user'
 
 puts "Marge Simpson: hello world"
 puts

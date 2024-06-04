@@ -1,5 +1,5 @@
-require 'nostrb'      # project
-require 'schnorr_sig' # gem
+require 'nostrb/event' #  project
+require 'schnorr_sig'  # gem
 
 module Nostr
   # The User class stores profile and keys, and it can create posts, etc

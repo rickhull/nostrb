@@ -1,4 +1,4 @@
-require 'nostrb/user' # project
+require 'nostrb'      # project
 require 'digest'      # stdlib
 require 'schnorr_sig' # gem
 
