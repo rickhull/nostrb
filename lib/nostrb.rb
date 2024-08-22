@@ -17,12 +17,12 @@ module Nostr
     space_before: '',
   }
 
-  # return a ruby object, likely hash or array
+  # convert a string of JSON; return a ruby object, likely hash or array
   def self.parse(json)
     JSON.parse(json, **JSON_OPTIONS)
   end
 
-  # convert a ruby object, likely hash or array, return a string of JSON
+  # convert a ruby object, likely hash or array; return a string of JSON
   def self.json(object)
     JSON.generate(object, **JSON_OPTIONS)
   end
@@ -34,22 +34,25 @@ module Nostr
   end
 
   # raise or return str
-  def self.binary(str, length = nil)
+  def self.string(str, length = nil)
     Nostr.typecheck(str, String)
-    raise(EncodingError, str.encoding) if str.encoding != Encoding::BINARY
-    if length and length != str.bytesize
-      raise(SizeError, "#{length} : #{str.bytesize}")
+    if length and length != str.length
+      raise(SizeError, "expected #{length}; actual #{str.length}")
     end
     str
   end
 
   # raise or return str
+  def self.binary(str, length = nil)
+    Nostr.string(str, length)
+    raise(EncodingError, str.encoding) if str.encoding != Encoding::BINARY
+    str
+  end
+
+  # raise or return str
   def self.hex(str, length = nil)
-    Nostr.typecheck(str, String)
+    Nostr.string(str, length)
     raise(EncodingError, str.encoding) if str.encoding == Encoding::BINARY
-    if length and length != str.bytesize
-      raise(SizeError, "#{length} : #{str.bytesize}")
-    end
     str
   end
 end
