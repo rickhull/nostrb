@@ -4,7 +4,6 @@ require 'digest'      # stdlib
 module Nostr
   class Event
     class Error < RuntimeError; end
-    class DeprecatedError < Error; end
     class BoundsError < Error; end
     class FrozenError < Error; end
     class IdCheck < Error; end
