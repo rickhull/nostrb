@@ -3,12 +3,6 @@ require 'digest'      # stdlib
 
 module Nostr
   class Event
-    class Error < RuntimeError; end
-    class BoundsError < Error; end
-    class FrozenError < Error; end
-    class IdCheck < Error; end
-    class SignatureCheck < Error; end
-
     # id: 64 hex chars (32B binary)
     # pubkey: 64 hex chars (32B binary)
     # created_at: unix seconds, integer
@@ -18,24 +12,25 @@ module Nostr
     # sig: 128 hex chars (64B binary)
 
     # the id is a SHA256 digest of the serialized event:
-    # [
-    #   0,
+    # [ 0,
     #   <pubkey, lowercase hex>,
     #   <created at>,
     #   <kind>,
     #   <tags>,
-    #   <content>
-    # ]
+    #   <content> ]
 
     # Event Creation
     # ---
-    # 1. with public key, set:
-    # 1a. content: String ('')
-    # 1b. kind: Integer (1)
-    # 1c. tags: Array ([])
-    # 2. timestamp: Integer, unix timestamp
+    # 1. given: content, public key, kind, (tags)
+    # 2. generate timestamp: Integer, unix timestamp
     # 3. generate id: SHA256, 32B binary, 64B hex
     # 4. sign(secret_key): 64B binary, 128B hex
+
+    class Error < RuntimeError; end
+    class BoundsError < Error; end
+    class FrozenError < Error; end
+    class IdCheck < Error; end
+    class SignatureCheck < Error; end
 
     # deconstruct and typecheck, return a ruby hash
     # this should correspond directly to Event#to_h

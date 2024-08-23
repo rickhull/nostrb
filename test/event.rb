@@ -3,15 +3,18 @@ require 'minitest/autorun'
 
 include Nostr
 
-describe Event do
-  $sk, $pk = SchnorrSig.keypair
-  $hk = SchnorrSig.bin2hex($pk)
+$sk, $pk = SchnorrSig.keypair
+$hk = SchnorrSig.bin2hex($pk)
 
-  def text_note(content = '')
-    Event.new(content, kind: 1, pubkey: $hk)
-  end
+def text_note(content = '')
+  Event.new(content, kind: 1, pubkey: $hk)
+end
+
+describe Event do
 
   describe "class functions" do
+    # JSON = text_note().sign($sk).to_json
+
     it "validates a JSON string and returns a ruby hash" do
       # Event.hash
     end
@@ -52,7 +55,7 @@ describe Event do
   end
 
   it "creates a digest and hex id, on demand" do
-    e = Event.new(kind: 1, pubkey: $hk)
+    e = text_note()
     d = e.digest
     expect(d).must_be_kind_of String
     expect(d.length).must_equal 32
@@ -67,7 +70,7 @@ describe Event do
     ### New Event ###
 
     # the id is created automatically
-    e = Event.new(kind: 1, pubkey: $hk)
+    e = text_note()
     i = e.id
     expect(i).must_be_kind_of String
     expect(i.length).must_equal 64
@@ -81,7 +84,7 @@ describe Event do
   end
 
   it "signs the event, given a binary private key" do
-    e = Event.new(kind: 1, pubkey: $hk)
+    e = text_note()
     signature = e.sign($sk)
 
     # check signature
@@ -108,7 +111,7 @@ describe Event do
   end
 
   it "has a formalized Key-Value format" do
-    e = Event.new(kind: 1, pubkey: $hk)
+    e = text_note()
     h = e.to_h
     expect(h).must_be_kind_of Hash
     expect(h.fetch :id).must_be_kind_of String
@@ -130,7 +133,7 @@ describe Event do
   end
 
   it "has a formalized JSON format based on the object format" do
-    e = Event.new(kind: 1, pubkey: $hk)
+    e = text_note()
     j = e.to_json
     expect(j).must_be_kind_of(String)
 

@@ -26,14 +26,12 @@ module Nostr
   end
 
   # Array[Array[String]]
-  # may raise SS::TypeError
+  # calls Nostr.array!, above; may raise SS::TypeError
   def self.tags!(ary)
-    Nostr.array!(ary).each { |a|
-      Nostr.array!(a).each { |s| Nostr.string! s }
-    }
+    array!(ary).each { |a| array!(a).each { |s| Nostr.string! s } }
   end
 
-  # raise (EncodingError, SizeError) or return str
+  # raise (SS::EncodingError, SS::SizeError) or return str
   def self.binary!(str, length = nil)
     SS.string!(str)
     raise(SS::EncodingError, str.encoding) if str.encoding != Encoding::BINARY
@@ -41,7 +39,7 @@ module Nostr
     str
   end
 
-  # raise (EncodingError, SizeError) or return str
+  # raise (SS::EncodingError, SS::SizeError) or return str
   def self.hex!(str, length = nil)
     SS.string!(str)
     raise(SS::EncodingError, str.encoding) if str.encoding == Encoding::BINARY
@@ -66,12 +64,12 @@ module Nostr
     space_before: '',
   }
 
-  # return a ruby object, likely hash or array
+  # convert a string of JSON; return a ruby object, likely hash or array
   def self.parse(json)
     JSON.parse(json, **JSON_OPTIONS)
   end
 
-  # convert a ruby object, likely hash or array, return a string of JSON
+  # convert a ruby object, likely hash or array; return a string of JSON
   def self.json(object)
     JSON.generate(object, **JSON_OPTIONS)
   end
