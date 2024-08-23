@@ -9,26 +9,16 @@ describe Event do
   EVENT = Event.new(kind: 1, pubkey: HK)
 
   describe "class functions" do
-    it "creates a _set_metadata_ event" do
-      e = Event.set_metadata(name: 'Rick', pubkey: HK)
-      expect(e).must_be_kind_of Event
-      expect(e.kind).must_equal 0
+    it "validates a JSON string and returns a ruby hash" do
+      # Event.hash
     end
 
-    it "creates a _text_note_ event" do
-      e = Event.text_note('hello world', pubkey: HK)
-      expect(e).must_be_kind_of Event
-      expect(e.kind).must_equal 1
+    it "serializes a Ruby hash to a JSON array" do
+      # Event.serialize
     end
 
-    it "creates a _contact_list_ event" do
-      list = {
-        "deadbeef" * 8 => ["wss://deadbeef.relay", "deadbeef"],
-        "cafebabe" * 8 => ["wss://cafebabe.relay", "cafebabe"],
-      }
-      e = Event.contact_list(list, pubkey: HK)
-      expect(e).must_be_kind_of Event
-      expect(e.kind).must_equal 3
+    it "verifies the signature and validates the id of a JSON event string" do
+      # Event.verify
     end
   end
 
@@ -39,18 +29,20 @@ describe Event do
     expect(e.content).must_equal content
   end
 
-  it "requires a _kind_ integer" do
+  it "requires a _kind_ integer, defaulting to 1" do
     expect(EVENT.kind).must_equal 1
     expect(Event.new(kind: 0, pubkey: HK).kind).must_equal 0
-    expect { Event.new(pubkey: HK) }.must_raise ArgumentError
+    expect(Event.new(pubkey: HK).kind).must_equal 1
   end
 
   it "requires a pubkey in hex format" do
     expect(EVENT.pubkey).must_equal HK
-    expect { Event.new(kind: 1, pubkey: PK) }.must_raise Nostr::SizeError
     expect {
-      Event.new(kind: 1, pubkey: PK + PK)
-    }.must_raise Nostr::EncodingError
+      Event.new(kind: 1, pubkey: PK)
+    }.must_raise SchnorrSig::EncodingError
+    expect {
+      Event.new(kind: 1, pubkey: "0123456789abcdef")
+    }.must_raise SchnorrSig::SizeError
   end
 
   it "has no timestamp or signature at creation time" do
@@ -110,39 +102,39 @@ describe Event do
     expect(sign2).wont_equal signature
 
     # negative testing
-    expect { e.sign('a' * 31) }.must_raise Nostr::SizeError
-    expect { e.sign('a' * 32) }.must_raise Nostr::EncodingError
+    expect { e.sign('a'.b * 31) }.must_raise SchnorrSig::SizeError
+    expect { e.sign('a' * 32) }.must_raise SchnorrSig::EncodingError
   end
 
-  it "has a formalized object format" do
+  it "has a formalized Key-Value format" do
     e = Event.new(kind: 1, pubkey: HK)
-    o = e.object
-    expect(o).must_be_kind_of Hash
-    expect(o.fetch :id).must_be_kind_of String
-    expect(o.fetch :pubkey).must_be_kind_of String
-    expect(o.fetch :created_at).must_be_kind_of Integer
-    expect(o.fetch :kind).must_be_kind_of Integer
-    expect(o.fetch :content).must_be_kind_of String
-    expect(o.fetch :sig).must_be_nil
+    h = e.to_h
+    expect(h).must_be_kind_of Hash
+    expect(h.fetch :id).must_be_kind_of String
+    expect(h.fetch :pubkey).must_be_kind_of String
+    expect(h.fetch :created_at).must_be_kind_of Integer
+    expect(h.fetch :kind).must_be_kind_of Integer
+    expect(h.fetch :content).must_be_kind_of String
+    expect(h.fetch :sig).must_be_empty
 
     e.sign(SK)
-    o = e.object
-    expect(o).must_be_kind_of Hash
-    expect(o.fetch :id).must_be_kind_of String
-    expect(o.fetch :pubkey).must_be_kind_of String
-    expect(o.fetch :created_at).must_be_kind_of Integer
-    expect(o.fetch :kind).must_be_kind_of Integer
-    expect(o.fetch :content).must_be_kind_of String
-    expect(o.fetch :sig).must_be_kind_of String
+    h = e.to_h
+    expect(h).must_be_kind_of Hash
+    expect(h.fetch :id).must_be_kind_of String
+    expect(h.fetch :pubkey).must_be_kind_of String
+    expect(h.fetch :created_at).must_be_kind_of Integer
+    expect(h.fetch :kind).must_be_kind_of Integer
+    expect(h.fetch :content).must_be_kind_of String
+    expect(h.fetch :sig).must_be_kind_of String
   end
 
   it "has a formalized JSON format based on the object format" do
     e = Event.new(kind: 1, pubkey: HK)
-    j = e.json
+    j = e.to_json
     expect(j).must_be_kind_of(String)
 
     e.sign(SK)
-    js = e.json
+    js = e.to_json
     expect(js.length).must_be :>, j.length
   end
 
