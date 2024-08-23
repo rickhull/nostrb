@@ -10,21 +10,32 @@ def text_note(content = '')
   Event.new(content, kind: 1, pubkey: $hk)
 end
 
+$json = text_note().sign($sk).to_json
+
 describe Event do
-
   describe "class functions" do
-    # JSON = text_note().sign($sk).to_json
-
     it "validates a JSON string and returns a ruby hash" do
-      # Event.hash
+      h = Event.hash($json)
+      expect(h).must_be_kind_of Hash
+      [:id, :pubkey, :kind, :content, :tags, :created_at, :sig].each { |sym|
+        expect(h.key?(sym)).must_equal true
+      }
+
+      expect { Event.hash('hello world') }.must_raise JSON::ParserError
+      expect { Event.hash('{"id": "1234"}') }.must_raise KeyError
     end
 
     it "serializes a Ruby hash to a JSON array" do
-      # Event.serialize
+      h = Event.hash($json)
+      s = Event.serialize(h)
+      p = JSON.parse(s)
+      expect(p).must_be_kind_of Array
+      expect(p.length).must_equal 6
     end
 
     it "verifies the signature and validates the id of a JSON event string" do
-      # Event.verify
+      h = Event.verify($json)
+      expect(h).must_be_kind_of Hash
     end
   end
 
