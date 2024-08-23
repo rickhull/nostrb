@@ -141,6 +141,7 @@ module Nostr
     def sign(secret_key)
       @signature = SchnorrSig.sign(Nostr.binary!(secret_key, 32),
                                    self.digest(memo: false))
+      self
     end
 
     def signed?

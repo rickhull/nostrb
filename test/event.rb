@@ -84,8 +84,8 @@ describe Event do
   end
 
   it "signs the event, given a binary private key" do
-    e = text_note()
-    signature = e.sign($sk)
+    e = text_note().sign($sk)
+    signature = e.signature
 
     # check signature
     expect(signature).must_be_kind_of String
