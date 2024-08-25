@@ -1,177 +1,131 @@
-require 'nostrb/user'
+require 'nostrb/source'
+
+include SchnorrSig
+
+pubkeys = {}
+
+# generate keypair
+marge_sk, pk = SchnorrSig.keypair
+
+# create a message using the public key
+marge = Nostr::Source.new(pk: pk)
+hello = marge.text_note('Good morning, Homie')
 
 puts "Marge Simpson: hello world"
 puts
-
-# keypair will be generated
-marge = Nostr::User.new(name: 'Marge')
-hello = marge.post('Hi Homie')
 
 puts "Serialized"
 p hello.serialize
 puts
 
-marge.sign(hello)
+# sign the message with the secret key
+hello.sign(marge_sk)
 
 puts "Event Object"
-p hello.object
+puts hello.to_json
 puts
 
-puts "Event JSON"
-puts hello.json
-puts
+#####
 
-############
+# bring our own secret key; generate the public key
+homer_sk = Random.bytes(32)
+pk = SchnorrSig.pubkey(homer_sk)
+
+# create a message using the public key
+homer = Nostr::Source.new(pk: pk)
+response = homer.text_note('Good morning, Marge')
+
+# reference an earlier message
+response.ref_event(hello.id)
 
 puts
-puts "goodnight"
+puts "Homer: hello back, private key, ref prior event"
 puts
-
-goodnight = marge.post('Goodnight Homer')
-goodnight.ref_event(hello.id)
 
 puts "Serialized"
-p goodnight.serialize
+p response.serialize
 puts
 
-marge.sign(goodnight)
+# sign the message with the secret key
+response.sign(homer_sk)
 
 puts "Event Object"
-p goodnight.object
+puts response.to_json
 puts
 
-puts "Event JSON"
-puts goodnight.json
+#####
+
+maggie_sk, pk = SchnorrSig.keypair
+maggie = Nostr::Source.new(pk: pk)
+
+puts
+puts "Maggie: love letter, ref Marge's pubkey"
 puts
 
-############
-
-puts
-puts "homer loves marge"
-puts
-
-# use our own secret key; pubkey will be generated
-homer = Nostr::User.new(name: 'Homer', about: 'Homer Jay Simpson',
-                        sk: Random.bytes(32))
-love_letter = homer.post("I love you Marge.\nLove, Homie")
-love_letter.ref_pk(marge.pk)
+love_letter = maggie.text_note("Dear Mom,\nYou're the best.\nLove, Maggie")
+love_letter.ref_pubkey(marge.pubkey)
 
 puts "Serialized"
 p love_letter.serialize
 puts
 
-homer.sign(love_letter)
+love_letter.sign(maggie_sk)
 
 puts "Event Object"
-p love_letter.object
+puts love_letter.to_json
 puts
 
-puts "Event JSON"
-puts love_letter.json
-puts
-
-###########
+#####
 
 puts
-puts "bart uploads his profile"
+puts "Bart uploads his profile"
 puts
 
-# we'll "bring our own" keypair
-sk, pk = SchnorrSig.keypair
-bart = Nostr::User.new(name: 'Bart',
-                       about: 'Bartholomew Jojo Simpson',
-                       picture: 'https://upload.wikimedia.org/wikipedia/en/a/aa/Bart_Simpson_200px.png',
-                       sk: sk, pk: pk)
-profile = bart.profile
+
+bart_sk, bart_pk = SchnorrSig.keypair
+bart = Nostr::Source.new(pk: pk)
+profile = bart.set_metadata(name: 'Bart',
+                            about: 'Bartholomew Jojo Simpson',
+                            picture: 'https://upload.wikimedia.org' +
+                            '/wikipedia/en/a/aa/Bart_Simpson_200px.png')
 
 puts "Serialized"
 p profile.serialize
 puts
 
-bart.sign(profile)
+profile.sign(bart_sk)
 
 puts "Event Object"
-p profile.object
-puts
-
-puts "Event JSON"
-puts profile.json
+puts profile.to_json
 puts
 
 puts "Profile Content"
 puts profile.content
 puts
 
-###########
+#####
 
 puts
-puts "lisa follows her family"
+puts "Lisa follows her family"
 puts
 
-lisa = Nostr::User.new(name: 'Lisa')
-following = lisa.follows({ marge.pubkey => ['wss://marge.relay/', 'mom'],
-                           homer.pubkey => ['wss://homer.relay/', 'dad'],
-                           bart.pubkey  => ['wss://bart.relay/', 'bart'], })
+lisa_sk, pk = SchnorrSig.keypair
+lisa = Nostr::Source.new(pk: pk)
+
+pubkey_hsh = {
+  marge.pubkey => ["wss://thesimpsons.com/", "marge"],
+  homer.pubkey => ["wss://thesimpsons.com/", "homer"],
+  bart.pubkey => ["wss://thesimpsons.com/", "bart"],
+  maggie.pubkey => ["wss://thesimpsons.com/", "maggie"],
+}
+
+following = lisa.contact_list(pubkey_hsh)
 
 puts "Serialized"
 p following.serialize
 puts
 
-lisa.sign(following)
+following.sign(lisa_sk)
 
 puts "Event Object"
-p following.object
-puts
-
-puts "Event JSON"
-puts following.json
-puts
-
-############
-
-puts
-puts "maggie has an adorable secret key"
-puts
-
-maggie = Nostr::User.new(name: 'Maggie', sk: ("\x00" * 16 + "\xFF" * 16).b)
-babble = maggie.post("ga ga goo ga *squeal*")
-
-puts "Serialized"
-p babble.serialize
-puts
-
-maggie.sign(babble)
-
-puts "Event Object"
-p babble.object
-puts
-
-puts "Event JSON"
-puts babble.json
-puts
-
-############
-
-puts
-puts "lisa follows her family, including maggie"
-puts
-
-following = lisa.follows({ marge.pubkey => ['wss://marge.relay/', 'mom'],
-                           homer.pubkey => ['wss://homer.relay/', 'dad'],
-                           bart.pubkey  => ['wss://bart.relay/', 'bart'],
-                           maggie.pubkey => ['wss://maggie.relay/', 'maggie'],
-                         })
-
-puts "Serialized"
-p following.serialize
-puts
-
-lisa.sign(following)
-
-puts "Event Object"
-p following.object
-puts
-
-puts "Event JSON"
-puts following.json
-puts
+puts following.to_json
