@@ -5,6 +5,20 @@ module Nostr
   SS = SchnorrSig
 
   #
+  # KeyGen
+  #
+
+  # return [secret key (binary), public key (binary), public key (hex)]
+  def self.gen_keys(sk = nil)
+    if sk.nil?
+      sk, pk = SchnorrSig.keypair
+    else
+      pk = SchnorrSig.pubkey(sk)
+    end
+    [sk, pk, SchnorrSig.bin2hex(pk)]
+  end
+
+  #
   # Type Enforcement
   #
 
