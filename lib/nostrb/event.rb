@@ -38,13 +38,13 @@ module Nostr
     def self.hash(json_str)
       h = Nostr.parse(json_str)
       Nostr.check!(h, Hash)
-      Hash[id:            Nostr.text!(h.fetch("id"), 64),
-           pubkey:        Nostr.text!(h.fetch("pubkey"), 64),
-           kind:       Nostr.integer!(h.fetch("kind")),
-           content:       Nostr.text!(h.fetch("content")),
-           tags:          Nostr.tags!(h.fetch("tags")),
-           created_at: Nostr.integer!(h.fetch("created_at")),
-           sig:           Nostr.text!(h.fetch("sig"), 128),
+      Hash[ id:            Nostr.text!(h.fetch("id"), 64),
+            pubkey:        Nostr.text!(h.fetch("pubkey"), 64),
+            kind:       Nostr.integer!(h.fetch("kind")),
+            content:       Nostr.text!(h.fetch("content")),
+            tags:          Nostr.tags!(h.fetch("tags")),
+            created_at: Nostr.integer!(h.fetch("created_at")),
+            sig:           Nostr.text!(h.fetch("sig"), 128),
           ]
     end
 
@@ -150,13 +150,9 @@ module Nostr
     # signing will reset created_at and thus the digest / id
     # return self
     def sign(secret_key)
-      # fail early if we don't like the secret_key
       sk = SchnorrSig.hex2bin(Nostr.text!(secret_key, 64))
-      # this value is critical for the @id and @signature
-      d = self.digest # resets @created_at
-      # attempt signing
+      d = self.digest
       @signature = SchnorrSig.sign(sk, d)
-      # set the @id if we've gotten this far
       @id = SchnorrSig.bin2hex(d)
       self
     end
