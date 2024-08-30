@@ -5,13 +5,13 @@ Rake::TestTask.new :test do |t|
   t.warning = true
 end
 
-task default: :test
-
 task :examples do |t|
   Dir['examples/*.rb'].each { |f|
     sh "ruby #{f}"
   }
 end
+
+task default: [:test, :examples]
 
 begin
   require 'buildar'

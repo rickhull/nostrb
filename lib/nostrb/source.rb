@@ -1,4 +1,4 @@
-require 'nostrb/event' #  project
+require 'nostrb/event'
 
 module Nostr
 
@@ -51,6 +51,7 @@ module Nostr
 
     # TODO: WIP, DONTUSE
     def encrypted_text_message(content)
+      raise "WIP"
       Event.new(content, kind: 4, pubkey: @pubkey)
     end
     alias_method :direct_msg, :encrypted_text_message

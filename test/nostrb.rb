@@ -3,6 +3,28 @@ require 'minitest/autorun'
 
 describe Nostr do
   describe "module functions" do
+    describe "SHA256 digest" do
+      it "generates 32 bytes binary, given any string" do
+        strings = ["\x01\x02".b, '1234', 'asdf', '']
+        digests = strings.map { |s| Nostr.digest(s) }
+
+        digests.each { |d|
+          expect(d).must_be_kind_of String
+          expect(d.encoding).must_equal Encoding::BINARY
+          expect(d.length).must_equal 32
+        }
+      end
+
+      it "generates the same output for the same input" do
+        strings = ["\x01\x02".b, '1234', 'asdf', '']
+        digests = strings.map { |s| Nostr.digest(s) }
+
+        strings.each.with_index { |s, i|
+          expect(Nostr.digest(s)).must_equal digests[i]
+        }
+      end
+    end
+
     describe "keygen" do
       it "can generate a secret key" do
         sk, pk, hk = Nostr.keys

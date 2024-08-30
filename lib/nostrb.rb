@@ -1,8 +1,17 @@
 require 'schnorr_sig'
 require 'json'
+require 'digest'
 
 module Nostr
   class SizeError < RuntimeError; end
+
+  ##################
+  # SHA256 Digest
+  #
+
+  def self.digest(str)
+    Digest::SHA256.digest(str)
+  end
 
   ###########
   # KeyGen
