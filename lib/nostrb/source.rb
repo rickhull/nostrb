@@ -9,18 +9,8 @@ module Nostr
   class Source
     attr_reader :pubkey
 
-    def initialize(pubkey: nil, pk: nil)
-      if pubkey
-        @pubkey = Nostr.hex!(pubkey, 64)
-      elsif pk
-        @pubkey = SchnorrSig.bin2hex(Nostr.binary!(pk, 32))
-      else
-        raise "public key is required"
-      end
-    end
-
-    def pk
-      SchnorrSig.hex2bin @pubkey
+    def initialize(pubkey)
+      @pubkey = Nostr.hex!(pubkey, 64)
     end
 
     # returns an Event, kind: 1, text_note

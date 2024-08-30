@@ -3,7 +3,7 @@ require 'nostrb/source'
 include Nostr
 
 sk, pk, hk = Nostr.keys
-source = Source.new(pk: pk)
+source = Source.new(hk)
 
 puts "Public key:"
 puts source.pubkey

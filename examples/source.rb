@@ -4,7 +4,7 @@ require 'nostrb/source'
 marge_sk, pk, hk = Nostr.keys
 
 # create a message using the public key
-marge = Nostr::Source.new(pk: pk)
+marge = Nostr::Source.new(hk)
 hello = marge.text_note('Good morning, Homie')
 
 puts "Marge Simpson: hello world"
@@ -27,7 +27,7 @@ puts
 homer_sk, pk, hk = Nostr.keys(Random.bytes(32))
 
 # create a message using the public key
-homer = Nostr::Source.new(pk: pk)
+homer = Nostr::Source.new(hk)
 response = homer.text_note('Good morning, Marge')
 
 # reference an earlier message
@@ -51,7 +51,7 @@ puts
 #####
 
 maggie_sk, pk, hk = Nostr.keys
-maggie = Nostr::Source.new(pk: pk)
+maggie = Nostr::Source.new(hk)
 
 puts
 puts "Maggie: love letter, ref Marge's pubkey"
@@ -78,7 +78,7 @@ puts
 
 
 bart_sk, bart_pk, hk = Nostr.keys
-bart = Nostr::Source.new(pk: pk)
+bart = Nostr::Source.new(hk)
 profile = bart.set_metadata(name: 'Bart',
                             about: 'Bartholomew Jojo Simpson',
                             picture: 'https://upload.wikimedia.org' +
@@ -105,7 +105,7 @@ puts "Lisa follows her family"
 puts
 
 lisa_sk, pk, hk = Nostr.keys
-lisa = Nostr::Source.new(pk: pk)
+lisa = Nostr::Source.new(hk)
 
 pubkey_hsh = {
   marge.pubkey => ["wss://thesimpsons.com/", "marge"],

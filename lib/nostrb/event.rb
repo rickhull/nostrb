@@ -167,14 +167,12 @@ module Nostr
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
-    def ref_pubkey(pk_hex, *rest)
-      add_tag('p', Nostr.hex!(pk_hex, 64), *rest)
+    def ref_pubkey(pubkey, *rest)
+      add_tag('p', Nostr.hex!(pubkey, 64), *rest)
     end
 
-    # kind: and one of [pubkey:, pk:] required
-    def ref_replace(*rest, kind:, pubkey: nil, pk: nil, d_tag: '')
-      raise(ArgumentError, "public key required") if pubkey.nil? and pk.nil?
-      pubkey ||= SchnorrSig.bin2hex(pk.to_s)
+    # kind: and pubkey: required
+    def ref_replace(*rest, kind:, pubkey:, d_tag: '')
       val = [Nostr.integer!(kind), Nostr.hex!(pubkey, 64), d_tag].join(':')
       add_tag('a', val, *rest)
     end
