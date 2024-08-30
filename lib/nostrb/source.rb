@@ -53,7 +53,7 @@ module Nostr
     def contact_list(pubkey_hsh)
       list = Event.new('', kind: 3, pubkey: @pubkey)
       pubkey_hsh.each { |pubkey, ary|
-        list.ref_pubkey(Nostr.hex!(pubkey, 64), *Nostr.array!(ary))
+        list.ref_pubkey(Nostr.hex!(pubkey, 64), *Nostr.check!(ary, Array))
       }
       list
     end

@@ -39,13 +39,13 @@ module Nostr
     def self.hash(json_str)
       h = Nostr.parse(json_str)
       raise(TypeError, "Hash expected: #{h.inspect}") unless h.is_a? Hash
-      { id:          Nostr.string!(h.fetch("id")),
-        pubkey:      Nostr.string!(h.fetch("pubkey")),
+      { id:             Nostr.hex!(h.fetch("id"), 64),
+        pubkey:         Nostr.hex!(h.fetch("pubkey"), 64),
         kind:       Nostr.integer!(h.fetch("kind")),
         content:     Nostr.string!(h.fetch("content")),
         tags:          Nostr.tags!(h.fetch("tags")),
         created_at: Nostr.integer!(h.fetch("created_at")),
-        sig:         Nostr.string!(h.fetch("sig")), }
+        sig:            Nostr.hex!(h.fetch("sig"), 128), }
     end
 
     # create JSON array serialization

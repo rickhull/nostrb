@@ -44,12 +44,6 @@ describe Nostr do
         expect { Nostr.integer!('1234') }.must_raise TypeError
       end
 
-      it "enforces Array class where expected" do
-        ary = [1,2,3]
-        expect(Nostr.array!(ary)).must_equal ary
-        expect { Nostr.array!(Hash.new) }.must_raise TypeError
-      end
-
       it "enforces a particular tag structure where expected" do
         # Array[Array[String]]
         tags = [['a', 'b', 'c'], ['1', '2', '3', '4']]

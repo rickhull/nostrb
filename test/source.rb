@@ -18,8 +18,8 @@ describe Source do
     expect(s.pubkey).must_equal $hk
     expect(s.pk).must_equal $pk
 
-    expect { Source.new(pk: $hk) }.must_raise SchnorrSig::EncodingError
-    expect { Source.new(pubkey: $pk) }.must_raise SchnorrSig::EncodingError
+    expect { Source.new(pk: $hk) }.must_raise EncodingError
+    expect { Source.new(pubkey: $pk) }.must_raise EncodingError
   end
 
   it "creates text_note events" do

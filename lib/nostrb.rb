@@ -18,52 +18,45 @@ module Nostr
   # Type Enforcement
   #
 
-  def self.type_check!(val, cls)
+  # raise TypeError or return val
+  def self.check!(val, cls)
     val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
   end
 
-  # raise TypeError or return str
-  def self.string!(str)
-    type_check!(str, String)
+  # enforce String
+  # enforce binary/nonbinary encoding
+  # enforce length (optional)
+  def self.string!(str, binary: nil, length: nil)
+    check!(str, String)
+    if !binary.nil? and !!binary != (str.encoding == Encoding::BINARY)
+      raise(EncodingError, str.encoding)
+    end
+    raise(SizeError, str.length) if !length.nil? and length != str.length
+    str
   end
 
-  # raise TypeError or return int
+  # enforce Integer
   def self.integer!(int)
-    type_check!(int, Integer)
+    check!(int, Integer)
   end
 
-  # raise TypeError or return ary
-  def self.array!(ary)
-    type_check!(ary, Array)
-  end
-
-  # Array[Array[String]]
-  # calls Nostr.array!, above; may raise TypeError
+  # enforce Array[Array[String]]
   def self.tags!(ary)
-    type_check!(ary, Array).each { |a|
-      type_check!(a, Array).each { |s|
-        type_check!(s, String)
+    check!(ary, Array).each { |a|
+      check!(a, Array).each { |s|
+        check!(s, String)
       }
     }
   end
 
-  def self.str_check!(str, binary: true, length: nil)
-    type_check!(str, String)
-    if !!binary != (str.encoding == Encoding::BINARY)
-      raise(EncodingError, str.encoding)
-    end
-    raise(SizeError, str.length) if length and length != str.length
-    str
-  end
-
   # raise (EncodingError, SizeError) or return str
   def self.binary!(str, length = nil)
-    str_check!(str, binary: true, length: length)
+    string!(str, binary: true, length: length)
   end
 
   # raise (EncodingError, SizeError) or return str
   def self.hex!(str, length = nil)
-    str_check!(str, binary: false, length: length)
+    string!(str, binary: false, length: length)
   end
 
   #

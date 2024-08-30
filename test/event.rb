@@ -3,8 +3,7 @@ require 'minitest/autorun'
 
 include Nostr
 
-$sk, $pk = SchnorrSig.keypair
-$hk = SchnorrSig.bin2hex($pk)
+$sk, $pk, $hk = Nostr.gen_keys
 
 def text_note(content = '')
   Event.new(content, kind: 1, pubkey: $hk)
@@ -22,7 +21,7 @@ describe Event do
       }
 
       expect { Event.hash('hello world') }.must_raise JSON::ParserError
-      expect { Event.hash('{"id": "1234"}') }.must_raise KeyError
+      expect { Event.hash('{}') }.must_raise KeyError
     end
 
     it "serializes a Ruby hash to a JSON array" do
@@ -53,10 +52,10 @@ describe Event do
     expect(text_note().pubkey).must_equal $hk
     expect {
       Event.new(kind: 1, pubkey: $pk)
-    }.must_raise SchnorrSig::EncodingError
+    }.must_raise EncodingError
     expect {
       Event.new(kind: 1, pubkey: "0123456789abcdef")
-    }.must_raise SchnorrSig::SizeError
+    }.must_raise SizeError
     expect { Event.new }.must_raise
   end
 
@@ -117,8 +116,8 @@ describe Event do
     expect(sign2).wont_equal signature
 
     # negative testing
-    expect { e.sign('a'.b * 31) }.must_raise SchnorrSig::SizeError
-    expect { e.sign('a' * 32) }.must_raise SchnorrSig::EncodingError
+    expect { e.sign('a'.b * 31) }.must_raise SizeError
+    expect { e.sign('a' * 32) }.must_raise EncodingError
   end
 
   it "has a formalized Key-Value format" do
