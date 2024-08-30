@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - '.github/**'
+      - 'Rakefile'
+  pull_request:
+    branches: ['**']
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - '.github/**'
+      - 'Rakefile'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        #ruby: [ head, jruby-head, truffleruby-head ]
+        #ruby: [ head, truffleruby-head ]
+        ruby: [ head, jruby-head ]
+        #ruby: [ head ]
+    name: Ruby ${{ matrix.ruby }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler: none
+      - name: Install dependencies
+        run: gem install schnorr_sig
+      - name: Run tests
+        run: rake test
