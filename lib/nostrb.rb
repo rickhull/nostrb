@@ -9,7 +9,7 @@ module Nostr
   #
 
   # return [secret key (binary), public key (binary), public key (hex)]
-  def self.gen_keys(sk = nil)
+  def self.keys(sk = nil)
     sk, pk = sk.nil? ? SchnorrSig.keypair : [sk, SchnorrSig.pubkey(sk)]
     [sk, pk, SchnorrSig.bin2hex(pk)]
   end

@@ -3,7 +3,7 @@ require 'minitest/autorun'
 
 include Nostr
 
-$sk, $pk, $hk = Nostr.gen_keys
+$sk, $pk, $hk = Nostr.keys
 
 def text_note(content = '')
   Event.new(content, kind: 1, pubkey: $hk)

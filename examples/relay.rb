@@ -2,7 +2,7 @@ require 'nostrb/source'
 
 include Nostr
 
-sk, pk = SchnorrSig.keypair
+sk, pk, hk = Nostr.keys
 source = Source.new(pk: pk)
 
 puts "Public key:"

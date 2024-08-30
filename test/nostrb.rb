@@ -5,7 +5,7 @@ describe Nostr do
   describe "module functions" do
     describe "keygen" do
       it "can generate a secret key" do
-        sk, pk, hk = Nostr.gen_keys
+        sk, pk, hk = Nostr.keys
         [sk, pk].each { |binary|
           expect(binary).must_be_kind_of String
           expect(binary.encoding).must_equal Encoding::BINARY
@@ -18,7 +18,7 @@ describe Nostr do
 
       it "can generate a public key given a secret key" do
         rk = Random.bytes(32)
-        sk, pk, hk = Nostr.gen_keys(rk)
+        sk, pk, hk = Nostr.keys(rk)
         expect(sk).must_equal rk
         [sk, pk].each { |binary|
           expect(binary).must_be_kind_of String

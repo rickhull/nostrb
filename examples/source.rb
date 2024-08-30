@@ -1,11 +1,7 @@
 require 'nostrb/source'
 
-include SchnorrSig
-
-pubkeys = {}
-
-# generate keypair
-marge_sk, pk = SchnorrSig.keypair
+# generate marge keys
+marge_sk, pk, hk = Nostr.keys
 
 # create a message using the public key
 marge = Nostr::Source.new(pk: pk)
@@ -28,8 +24,7 @@ puts
 #####
 
 # bring our own secret key; generate the public key
-homer_sk = Random.bytes(32)
-pk = SchnorrSig.pubkey(homer_sk)
+homer_sk, pk, hk = Nostr.keys(Random.bytes(32))
 
 # create a message using the public key
 homer = Nostr::Source.new(pk: pk)
@@ -55,7 +50,7 @@ puts
 
 #####
 
-maggie_sk, pk = SchnorrSig.keypair
+maggie_sk, pk, hk = Nostr.keys
 maggie = Nostr::Source.new(pk: pk)
 
 puts
@@ -82,7 +77,7 @@ puts "Bart uploads his profile"
 puts
 
 
-bart_sk, bart_pk = SchnorrSig.keypair
+bart_sk, bart_pk, hk = Nostr.keys
 bart = Nostr::Source.new(pk: pk)
 profile = bart.set_metadata(name: 'Bart',
                             about: 'Bartholomew Jojo Simpson',
@@ -109,7 +104,7 @@ puts
 puts "Lisa follows her family"
 puts
 
-lisa_sk, pk = SchnorrSig.keypair
+lisa_sk, pk, hk = Nostr.keys
 lisa = Nostr::Source.new(pk: pk)
 
 pubkey_hsh = {

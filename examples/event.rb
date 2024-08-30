@@ -3,7 +3,7 @@ require 'nostrb/event'
 include Nostr
 
 puts "Key Generation"
-sk, pk, hk = Nostr.gen_keys
+sk, pk, hk = Nostr.keys
 puts "Secret key: #{SchnorrSig.bin2hex(sk)}"
 puts "Public key: #{hk}"
 puts

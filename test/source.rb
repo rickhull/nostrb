@@ -4,8 +4,7 @@ require 'minitest/autorun'
 include Nostr
 
 describe Source do
-  $sk, $pk = SchnorrSig.keypair
-  $hk = SchnorrSig.bin2hex($pk)
+  $sk, $pk, $hk = Nostr.keys
 
   it "wraps a hex-formatted pubkey" do
     s = Source.new(pubkey: $hk)
