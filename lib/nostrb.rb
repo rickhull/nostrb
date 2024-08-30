@@ -2,7 +2,7 @@ require 'schnorr_sig'
 require 'json'
 
 module Nostr
-  SS = SchnorrSig
+  class SizeError < RuntimeError; end
 
   #
   # KeyGen
@@ -10,11 +10,7 @@ module Nostr
 
   # return [secret key (binary), public key (binary), public key (hex)]
   def self.gen_keys(sk = nil)
-    if sk.nil?
-      sk, pk = SchnorrSig.keypair
-    else
-      pk = SchnorrSig.pubkey(sk)
-    end
+    sk, pk = sk.nil? ? SchnorrSig.keypair : [sk, SchnorrSig.pubkey(sk)]
     [sk, pk, SchnorrSig.bin2hex(pk)]
   end
 
@@ -22,43 +18,52 @@ module Nostr
   # Type Enforcement
   #
 
-  # raise SS::TypeError or return str
+  def self.type_check!(val, cls)
+    val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
+  end
+
+  # raise TypeError or return str
   def self.string!(str)
-    SS.string!(str) and str
+    type_check!(str, String)
   end
 
-  # raise SS::TypeError or return int
+  # raise TypeError or return int
   def self.integer!(int)
-    SS.integer!(int) and int
+    type_check!(int, Integer)
   end
 
-  # raise SS::TypeError or SS::SizeError or return ary
-  def self.array!(ary, length = nil)
-    raise(SS::TypeError, ary.class) unless ary.is_a?(Array)
-    raise(SS::SizeError, ary.length) if length and length != ary.length
-    ary
+  # raise TypeError or return ary
+  def self.array!(ary)
+    type_check!(ary, Array)
   end
 
   # Array[Array[String]]
-  # calls Nostr.array!, above; may raise SS::TypeError
+  # calls Nostr.array!, above; may raise TypeError
   def self.tags!(ary)
-    array!(ary).each { |a| array!(a).each { |s| Nostr.string! s } }
+    type_check!(ary, Array).each { |a|
+      type_check!(a, Array).each { |s|
+        type_check!(s, String)
+      }
+    }
   end
 
-  # raise (SS::EncodingError, SS::SizeError) or return str
+  def self.str_check!(str, binary: true, length: nil)
+    type_check!(str, String)
+    if !!binary != (str.encoding == Encoding::BINARY)
+      raise(EncodingError, str.encoding)
+    end
+    raise(SizeError, str.length) if length and length != str.length
+    str
+  end
+
+  # raise (EncodingError, SizeError) or return str
   def self.binary!(str, length = nil)
-    SS.string!(str)
-    raise(SS::EncodingError, str.encoding) if str.encoding != Encoding::BINARY
-    raise(SS::SizeError, str.length) if length and length != str.length
-    str
+    str_check!(str, binary: true, length: length)
   end
 
-  # raise (SS::EncodingError, SS::SizeError) or return str
+  # raise (EncodingError, SizeError) or return str
   def self.hex!(str, length = nil)
-    SS.string!(str)
-    raise(SS::EncodingError, str.encoding) if str.encoding == Encoding::BINARY
-    raise(SS::SizeError, str.length) if length and length != str.length
-    str
+    str_check!(str, binary: false, length: length)
   end
 
   #
