@@ -1,10 +1,10 @@
 require 'nostrb/source'
 
 # generate marge keys
-marge_sk, pk, hk = Nostr.keys
+marge_sk, marge_pk = Nostr.keypair
 
 # create a message using the public key
-marge = Nostr::Source.new(hk)
+marge = Nostr::Source.new(marge_pk)
 hello = marge.text_note('Good morning, Homie')
 
 puts "Marge Simpson: hello world"
@@ -24,10 +24,10 @@ puts
 #####
 
 # bring our own secret key; generate the public key
-homer_sk, pk, hk = Nostr.keys(Random.bytes(32))
+homer_sk, homer_pk = Nostr.keypair
 
 # create a message using the public key
-homer = Nostr::Source.new(hk)
+homer = Nostr::Source.new(homer_pk)
 response = homer.text_note('Good morning, Marge')
 
 # reference an earlier message
@@ -50,15 +50,15 @@ puts
 
 #####
 
-maggie_sk, pk, hk = Nostr.keys
-maggie = Nostr::Source.new(hk)
+maggie_sk, maggie_pk = Nostr.keypair
+maggie = Nostr::Source.new(maggie_pk)
 
 puts
 puts "Maggie: love letter, ref Marge's pubkey"
 puts
 
 love_letter = maggie.text_note("Dear Mom,\nYou're the best.\nLove, Maggie")
-love_letter.ref_pubkey(marge.pubkey)
+love_letter.ref_pubkey(marge_pk) # or marge.pubkey
 
 puts "Serialized"
 p love_letter.serialize
@@ -77,8 +77,8 @@ puts "Bart uploads his profile"
 puts
 
 
-bart_sk, bart_pk, hk = Nostr.keys
-bart = Nostr::Source.new(hk)
+bart_sk, bart_pk = Nostr.keypair
+bart = Nostr::Source.new(bart_pk)
 profile = bart.set_metadata(name: 'Bart',
                             about: 'Bartholomew Jojo Simpson',
                             picture: 'https://upload.wikimedia.org' +
@@ -104,8 +104,8 @@ puts
 puts "Lisa follows her family"
 puts
 
-lisa_sk, pk, hk = Nostr.keys
-lisa = Nostr::Source.new(hk)
+lisa_sk, lisa_pk = Nostr.keypair
+lisa = Nostr::Source.new(lisa_pk)
 
 pubkey_hsh = {
   marge.pubkey => ["wss://thesimpsons.com/", "marge"],

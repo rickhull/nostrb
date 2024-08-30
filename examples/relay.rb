@@ -2,8 +2,8 @@ require 'nostrb/source'
 
 include Nostr
 
-sk, pk, hk = Nostr.keys
-source = Source.new(hk)
+secret_key, pubkey = Nostr.keypair
+source = Source.new(pubkey)
 
 puts "Public key:"
 puts source.pubkey
@@ -15,7 +15,7 @@ puts "Created message:"
 puts msg
 puts
 
-msg.sign(sk)
+msg.sign(secret_key)
 
 puts "Signed message:"
 p msg
