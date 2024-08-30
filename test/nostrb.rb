@@ -32,33 +32,24 @@ describe Nostr do
     end
 
     describe "type enforcement" do
+      it "can check any class" do
+        str = 'asdf'
+        expect(Nostr.check!(str, String)).must_equal str
+        expect { Nostr.check!(str, Range) }.must_raise TypeError
+
+        range = (0..10)
+        expect(Nostr.check!(range, Range)).must_equal range
+        expect { Nostr.check!(range, Symbol) }.must_raise TypeError
+
+        sym = :symbol
+        expect(Nostr.check!(sym, Symbol)).must_equal sym
+        expect { Nostr.check!(sym, String) }.must_raise TypeError
+      end
+
       it "enforces String class where expected" do
         str = 'asdf'
         expect(Nostr.string!(str)).must_equal str
         expect { Nostr.string!(1234) }.must_raise TypeError
-      end
-
-      it "enforces Integer class where expected" do
-        int = 1234
-        expect(Nostr.integer!(int)).must_equal int
-        expect { Nostr.integer!('1234') }.must_raise TypeError
-      end
-
-      it "enforces a particular tag structure where expected" do
-        # Array[Array[String]]
-        tags = [['a', 'b', 'c'], ['1', '2', '3', '4']]
-        expect(Nostr.tags!(tags)).must_equal tags
-
-        bads = [
-          ['a', 'b', 'c', '1' , '2', '3', '4'],  # Array[String]
-          [['a', 'b', 'c'], [1, 2, 3, 4]],       # Array[Array[String|Integer]]
-          ['a', 'b', 'c', ['1' , '2', '3', '4']],# Array[Array | String]
-          'a',                                   # String
-          [[:a, :b, :c], [1, 2, 3, 4]],          # Array[Array[Symbol|String]]
-        ]
-        bads.each { |val|
-          expect { Nostr.tags!(val) }.must_raise TypeError
-        }
       end
 
       it "validates a binary string" do
@@ -77,6 +68,28 @@ describe Nostr do
         expect(Nostr.hex!(hex, 16)).must_equal hex
         expect { Nostr.hex!(hex, 8) }.must_raise Nostr::SizeError
         expect { Nostr.hex!("0123".b) }.must_raise EncodingError
+      end
+
+      it "enforces Integer class where expected" do
+        int = 1234
+        expect(Nostr.integer!(int)).must_equal int
+        expect { Nostr.integer!('1234') }.must_raise TypeError
+      end
+
+      it "enforces a particular tag structure where expected" do
+        # Array[Array[String]]
+        tags = [['a', 'b', 'c'], ['1', '2', '3', '4']]
+        expect(Nostr.tags!(tags)).must_equal tags
+
+        [
+          ['a', 'b', 'c', '1' , '2', '3', '4'],  # Array[String]
+          [['a', 'b', 'c'], [1, 2, 3, 4]],       # Array[Array[String|Integer]]
+          ['a', 'b', 'c', ['1' , '2', '3', '4']],# Array[Array | String]
+          'a',                                   # String
+          [[:a, :b, :c], [1, 2, 3, 4]],          # Array[Array[Symbol|String]]
+        ].each { |bad|
+          expect { Nostr.tags!(bad) }.must_raise TypeError
+        }
       end
     end
 

@@ -24,7 +24,7 @@ module Nostr
   end
 
   # enforce String
-  # enforce binary/nonbinary encoding
+  # enforce binary/nonbinary encoding (optional)
   # enforce length (optional)
   def self.string!(str, binary: nil, length: nil)
     check!(str, String)
@@ -33,6 +33,16 @@ module Nostr
     end
     raise(SizeError, str.length) if !length.nil? and length != str.length
     str
+  end
+
+  # raise (EncodingError, SizeError) or return str
+  def self.binary!(str, length = nil)
+    string!(str, binary: true, length: length)
+  end
+
+  # raise (EncodingError, SizeError) or return str
+  def self.hex!(str, length = nil)
+    string!(str, binary: false, length: length)
   end
 
   # enforce Integer
@@ -47,16 +57,6 @@ module Nostr
         check!(s, String)
       }
     }
-  end
-
-  # raise (EncodingError, SizeError) or return str
-  def self.binary!(str, length = nil)
-    string!(str, binary: true, length: length)
-  end
-
-  # raise (EncodingError, SizeError) or return str
-  def self.hex!(str, length = nil)
-    string!(str, binary: false, length: length)
   end
 
   #
