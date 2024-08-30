@@ -98,9 +98,9 @@ module Nostr
       @kind = Nostr.integer!(kind)
       @pubkey = Nostr.text!(pubkey, 64)
       @tags = []
-      @created_at = nil
-      @id = nil
-      @signature = nil
+      @created_at = Time.now.to_i
+      @id = ""
+      @signature = "".b
       @max_tags = 99
     end
 
@@ -122,22 +122,27 @@ module Nostr
       Nostr.digest(self.to_s)
     end
 
-    # return a Ruby hash, suitable for JSON conversion to NIPS01 Event object
+    # return a Ruby hash
+    # if signed, suitable for JSON conversion to NIPS01 Event object
     def to_h
-      Hash[id: @id,
-           pubkey: @pubkey,
-           created_at: @created_at || Time.now.to_i,
-           kind: @kind,
-           tags: @tags,
-           content: @content,
-           sig: self.sig,
+      Hash[ id: @id,
+            pubkey: @pubkey,
+            created_at: @created_at,
+            kind: @kind,
+            tags: @tags,
+            content: @content,
+            sig: self.sig,
           ]
+    end
+
+    def signed?
+      !@signature.empty?
     end
 
     # before signing, return the array serialization
     # after signing, return the full object
     def to_json
-      @signature ? Nostr.json(self.to_h) : self.to_s
+      signed? ? Nostr.json(self.to_h) : self.to_s
     end
 
     # secret key is 64 bytes hex
@@ -156,14 +161,10 @@ module Nostr
       self
     end
 
-    def signed?
-      !!@signature
-    end
-
-    # nil unless signed
+    # empty until signed
     # return 128 bytes hex encoded
     def sig
-      SchnorrSig.bin2hex(@signature) if @signature
+      SchnorrSig.bin2hex(@signature)
     end
 
     # add an array of 2+ strings to @tags

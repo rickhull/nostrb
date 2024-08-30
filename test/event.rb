@@ -59,12 +59,16 @@ describe Event do
     expect { Event.new }.must_raise
   end
 
-  it "has no timestamp or signature at creation time" do
-    expect(text_note().created_at).must_be_nil
-    expect(text_note().signature).must_be_nil
+  it "generates a timestamp at creation time" do
+    expect(text_note().created_at).must_be_kind_of Integer
   end
 
-  it "creates a digest, but not an id, before signing time" do
+  it "has empty id and signature at creation time" do
+    expect(text_note().id).must_be_empty
+    expect(text_note().signature).must_be_empty
+  end
+
+  it "can create a digest, but not an id, before signing time" do
     e = text_note()
     d = e.digest
 
@@ -76,7 +80,7 @@ describe Event do
     expect(d.encoding).must_equal Encoding::BINARY
 
     # the id is not available until the event is signed
-    expect(e.id).must_be_nil
+    expect(e.id).must_be_empty
 
     # now sign the message to have a permanently valid id
     e.sign($secret_key)
@@ -117,22 +121,26 @@ describe Event do
     e = text_note()
     h = e.to_h
     expect(h).must_be_kind_of Hash
-    expect(h.fetch :id).must_be_nil
-    expect(h.fetch :pubkey).must_be_kind_of String
-    expect(h.fetch :created_at).must_be_kind_of Integer
-    expect(h.fetch :kind).must_be_kind_of Integer
-    expect(h.fetch :content).must_be_kind_of String
-    expect(h.fetch :sig).must_be_nil
-
-    e.sign($secret_key)
-    h = e.to_h
-    expect(h).must_be_kind_of Hash
     expect(h.fetch :id).must_be_kind_of String
+    expect(h.fetch :id).must_be_empty
     expect(h.fetch :pubkey).must_be_kind_of String
     expect(h.fetch :created_at).must_be_kind_of Integer
     expect(h.fetch :kind).must_be_kind_of Integer
     expect(h.fetch :content).must_be_kind_of String
     expect(h.fetch :sig).must_be_kind_of String
+    expect(h.fetch :sig).must_be_empty
+
+    e.sign($secret_key)
+    h = e.to_h
+    expect(h).must_be_kind_of Hash
+    expect(h.fetch :id).must_be_kind_of String
+    expect(h.fetch :id).wont_be_empty
+    expect(h.fetch :pubkey).must_be_kind_of String
+    expect(h.fetch :created_at).must_be_kind_of Integer
+    expect(h.fetch :kind).must_be_kind_of Integer
+    expect(h.fetch :content).must_be_kind_of String
+    expect(h.fetch :sig).must_be_kind_of String
+    expect(h.fetch :sig).wont_be_empty
   end
 
   it "has a formalized JSON format based on the object format" do
