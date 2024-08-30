@@ -7,6 +7,12 @@ end
 
 task default: :test
 
+task :examples do |t|
+  Dir['examples/*.rb'].each { |f|
+    sh "ruby #{f}"
+  }
+end
+
 begin
   require 'buildar'
 
