@@ -31,6 +31,32 @@ describe Source do
     end
 
     it "creates set_metadata events" do
+      s = Source.new($pubkey)
+      e = s.set_metadata(name: 'Bob Loblaw',
+                         about: "Bob Loblaw's Law Blog",
+                         picture: "https://localhost/me.jpg")
+      expect(e).must_be_kind_of Event
+      expect(e.kind).must_equal 0
+
+      # above data becomes JSON string in content
+      expect(e.content).wont_be_empty
+      expect(e.tags).must_be_empty
+    end
+
+    it "creates contact_list events" do
+      pubkey_hsh = {
+        SchnorrSig.bin2hex(Random.bytes(32)) => ['foo', 'bar'],
+        SchnorrSig.bin2hex(Random.bytes(32)) => ['baz', 'quux'],
+        SchnorrSig.bin2hex(Random.bytes(32)) => ['asdf', '123'],
+      }
+      s = Source.new($pubkey)
+      e = s.contact_list(pubkey_hsh)
+      expect(e).must_be_kind_of Event
+      expect(e.kind).must_equal 3
+
+      # above data goes into tags structure, not content
+      expect(e.content).must_be_empty
+      expect(e.tags).wont_be_empty
     end
   end
 end
