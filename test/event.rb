@@ -152,5 +152,47 @@ describe Event do
     expect(js.length).must_be :>, j.length
   end
 
-  # TODO: tag stuff
+  describe "event tags" do
+    it "supports tags in the form of Array[Array[String]]" do
+      e = text_note()
+      expect(e.tags).must_be_kind_of Array
+      expect(e.tags).must_be_empty
+
+      e.add_tag('tag', 'value')
+      expect(e.tags).wont_be_empty
+      expect(e.tags.length).must_equal 1
+
+      tags0 = e.tags[0]
+      expect(tags0.length).must_equal 2
+      expect(tags0[0]).must_equal 'tag'
+      expect(tags0[1]).must_equal 'value'
+
+      e.add_tag('foo', 'bar', 'baz')
+      expect(e.tags.length).must_equal 2
+
+      tags1 = e.tags[1]
+      expect(tags1.length).must_equal 3
+      expect(tags1[2]).must_equal 'baz'
+    end
+
+    it "references prior events" do
+      p = text_note()
+      e = text_note()
+      e.ref_event(p.id)
+      expect(e.tags).wont_be_empty
+      expect(e.tags.length).must_equal 1
+      expect(e.tags[0][0]).must_equal 'e'
+      expect(e.tags[0][1]).must_equal p.id
+    end
+
+    it "references known public keys" do
+      e = text_note()
+      _, _, hex = Nostr.keys
+      e.ref_pubkey(hex)
+      expect(e.tags).wont_be_empty
+      expect(e.tags.length).must_equal 1
+      expect(e.tags[0][0]).must_equal 'p'
+      expect(e.tags[0][1]).must_equal hex
+    end
+  end
 end

@@ -80,7 +80,7 @@ module Nostr
       h
     end
 
-    attr_reader :content, :kind, :created_at, :pubkey, :signature
+    attr_reader :content, :kind, :created_at, :pubkey, :signature, :tags
 
     def initialize(content = '', kind: 1, pubkey:)
       @content = Nostr.string!(content)

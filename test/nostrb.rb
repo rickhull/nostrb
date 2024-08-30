@@ -57,6 +57,7 @@ describe Nostr do
 
         expect(Nostr.binary!(binary)).must_equal binary
         expect(Nostr.binary!(binary, 3)).must_equal binary
+        expect { Nostr.binary!(binary, 4) }.must_raise Nostr::SizeError
         expect { Nostr.binary!("010203") }.must_raise EncodingError
         expect { Nostr.binary!("\x00\x01\x02") }.must_raise EncodingError
       end

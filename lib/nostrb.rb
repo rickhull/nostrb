@@ -4,7 +4,7 @@ require 'json'
 module Nostr
   class SizeError < RuntimeError; end
 
-  #
+  ###########
   # KeyGen
   #
 
@@ -14,7 +14,8 @@ module Nostr
     [sk, pk, SchnorrSig.bin2hex(pk)]
   end
 
-  #
+
+  #####################
   # Type Enforcement
   #
 
@@ -59,7 +60,8 @@ module Nostr
     }
   end
 
-  #
+
+  #############
   # JSON I/O
   #
 
