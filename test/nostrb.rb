@@ -65,10 +65,10 @@ describe Nostr do
       it "validates a hex string" do
         hex = "0123456789abcdef"
 
-        expect(Nostr.hex!(hex)).must_equal hex
-        expect(Nostr.hex!(hex, 16)).must_equal hex
-        expect { Nostr.hex!(hex, 8) }.must_raise Nostr::SizeError
-        expect { Nostr.hex!("0123".b) }.must_raise EncodingError
+        expect(Nostr.text!(hex)).must_equal hex
+        expect(Nostr.text!(hex, 16)).must_equal hex
+        expect { Nostr.text!(hex, 8) }.must_raise Nostr::SizeError
+        expect { Nostr.text!("0123".b) }.must_raise EncodingError
       end
 
       it "enforces Integer class where expected" do

@@ -39,13 +39,13 @@ module Nostr
     def self.hash(json_str)
       h = Nostr.parse(json_str)
       raise(TypeError, "Hash expected: #{h.inspect}") unless h.is_a? Hash
-      { id:             Nostr.hex!(h.fetch("id"), 64),
-        pubkey:         Nostr.hex!(h.fetch("pubkey"), 64),
+      { id:             Nostr.text!(h.fetch("id"), 64),
+        pubkey:         Nostr.text!(h.fetch("pubkey"), 64),
         kind:       Nostr.integer!(h.fetch("kind")),
-        content:     Nostr.string!(h.fetch("content")),
+        content:     Nostr.text!(h.fetch("content")),
         tags:          Nostr.tags!(h.fetch("tags")),
         created_at: Nostr.integer!(h.fetch("created_at")),
-        sig:            Nostr.hex!(h.fetch("sig"), 128), }
+        sig:            Nostr.text!(h.fetch("sig"), 128), }
     end
 
     # create JSON array serialization
@@ -83,9 +83,9 @@ module Nostr
     attr_reader :content, :kind, :created_at, :pubkey, :signature, :tags
 
     def initialize(content = '', kind: 1, pubkey:)
-      @content = Nostr.string!(content)
+      @content = Nostr.text!(content)
       @kind = Nostr.integer!(kind)
-      @pubkey = Nostr.hex!(pubkey, 64)
+      @pubkey = Nostr.text!(pubkey, 64)
       @tags = []
       @created_at = nil
       @digest = nil
@@ -139,6 +139,7 @@ module Nostr
     # assign @signature, return 64 bytes binary
     # signing will reset created_at and thus the digest / id
     def sign(secret_key)
+      secret_key = SchnorrSig.hex2bin(secret_key) if secret_key.length == 64
       @signature = SchnorrSig.sign(Nostr.binary!(secret_key, 32),
                                    self.digest(memo: false))
       self
@@ -157,23 +158,23 @@ module Nostr
     def add_tag(tag, value, *rest)
       raise(FrozenError) if signed?
       @digest = nil # invalidate any prior digest
-      @tags.push([Nostr.string!(tag), Nostr.string!(value)] +
-                 rest.each { |s| Nostr.string!(s) })
+      @tags.push([Nostr.text!(tag), Nostr.text!(value)] +
+                 rest.each { |s| Nostr.text!(s) })
     end
 
     # add an event tag based on event id, hex encoded
     def ref_event(eid_hex, *rest)
-      add_tag('e', Nostr.hex!(eid_hex, 64), *rest)
+      add_tag('e', Nostr.text!(eid_hex, 64), *rest)
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
     def ref_pubkey(pubkey, *rest)
-      add_tag('p', Nostr.hex!(pubkey, 64), *rest)
+      add_tag('p', Nostr.text!(pubkey, 64), *rest)
     end
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.integer!(kind), Nostr.hex!(pubkey, 64), d_tag].join(':')
+      val = [Nostr.integer!(kind), Nostr.text!(pubkey, 64), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end

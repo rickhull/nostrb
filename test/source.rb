@@ -1,6 +1,9 @@
 require 'nostrb/source'
 require 'minitest/autorun'
 
+### TODO elsewhere: add binary: false for content strings
+
+
 include Nostr
 
 describe Source do

@@ -16,7 +16,7 @@ module Nostr
 
 
   #####################
-  # Type Enforcement
+  # Type Checking and Enforcement
   #
 
   # raise TypeError or return val
@@ -25,7 +25,7 @@ module Nostr
   end
 
   # enforce String
-  # enforce binary/nonbinary encoding (optional)
+  # enforce binary/text encoding (optional)
   # enforce length (optional)
   def self.string!(str, binary: nil, length: nil)
     check!(str, String)
@@ -36,14 +36,43 @@ module Nostr
     str
   end
 
-  # raise (EncodingError, SizeError) or return str
+  # check String
+  # check binary/text (optional)
+  # check length (optional)
+  # return true or false
+  #   This method has similar logic to the above method, but we don't want to
+  #   rescue here, nor do we want this implementation there, because the above
+  #   implementation takes care to raise different types of exceptions.
+  def self.string?(str, binary: nil, length: nil)
+    str.is_a?(String) and
+      (binary.nil? or !!binary == (str.encoding == Encoding::BINARY)) and
+      (length.nil? or length == str.length)
+  end
+
+  # enforce binary encoding
+  # enforce length (optional)
   def self.binary!(str, length = nil)
     string!(str, binary: true, length: length)
   end
 
-  # raise (EncodingError, SizeError) or return str
-  def self.hex!(str, length = nil)
+  # check for binary encoding
+  # check length (optional)
+  # return true or false
+  def self.binary?(str, length = nil)
+    string?(str, binary: true, length: length)
+  end
+
+  # enforce nonbinary encoding
+  # enforce length (optional)
+  def self.text!(str, length = nil)
     string!(str, binary: false, length: length)
+  end
+
+  # check for nonbinary encoding
+  # check length (optional)
+  # return true or false
+  def self.text?(str, length = nil)
+    string?(str, binary: false, length: length)
   end
 
   # enforce Integer
