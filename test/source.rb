@@ -7,21 +7,23 @@ require 'minitest/autorun'
 include Nostr
 
 describe Source do
-  $sk, $pk, $hk = Nostr.keys
+  $skey, $pubkey = Nostr.keypair
 
   describe "instantiation" do
     it "wraps a hex-formatted pubkey" do
-      s = Source.new($hk)
+      s = Source.new($pubkey)
       expect(s).must_be_kind_of Source
-      expect(s.pubkey).must_equal $hk
+      expect(s.pubkey).must_equal $pubkey
 
-      expect { Source.new($pk) }.must_raise EncodingError
+      expect {
+        Source.new(SchnorrSig.hex2bin($pubkey))
+      }.must_raise EncodingError
     end
   end
 
   describe "event creation" do
     it "creates text_note events" do
-      s = Source.new($hk)
+      s = Source.new($pubkey)
       e = s.text_note('hello world')
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 1

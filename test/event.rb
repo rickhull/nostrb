@@ -3,13 +3,13 @@ require 'minitest/autorun'
 
 include Nostr
 
-$sk, $pk, $hk = Nostr.keys
+$secret_key, $pubkey = Nostr.keypair
 
 def text_note(content = '')
-  Event.new(content, kind: 1, pubkey: $hk)
+  Event.new(content, kind: 1, pubkey: $pubkey)
 end
 
-$json = text_note().sign($sk).to_json
+$json = text_note().sign($secret_key).to_json
 
 describe Event do
   describe "class functions" do
@@ -44,14 +44,14 @@ describe Event do
   end
 
   it "requires a _kind_ integer, defaulting to 1" do
-    expect(Event.new(kind: 0, pubkey: $hk).kind).must_equal 0
-    expect(Event.new(pubkey: $hk).kind).must_equal 1
+    expect(Event.new(kind: 0, pubkey: $pubkey).kind).must_equal 0
+    expect(Event.new(pubkey: $pubkey).kind).must_equal 1
   end
 
   it "requires a pubkey in hex format" do
-    expect(text_note().pubkey).must_equal $hk
+    expect(text_note().pubkey).must_equal $pubkey
     expect {
-      Event.new(kind: 1, pubkey: $pk)
+      Event.new(kind: 1, pubkey: SchnorrSig.hex2bin($pubkey))
     }.must_raise EncodingError
     expect {
       Event.new(kind: 1, pubkey: "0123456789abcdef")
@@ -64,37 +64,30 @@ describe Event do
     expect(text_note().signature).must_be_nil
   end
 
-  it "creates a digest and hex id, on demand" do
+  it "creates a digest, but not an id, before signing time" do
     e = text_note()
     d = e.digest
+
+    # the digest represents what the id would be at signing time
+    # but this value will change when the timestamp is set, at signing time
+    # so this value is not useful before signing time as it will change
     expect(d).must_be_kind_of String
     expect(d.length).must_equal 32
     expect(d.encoding).must_equal Encoding::BINARY
 
-    # the id is now the hex encoding of the digest
+    # the id is not available until the event is signed
+    expect(e.id).must_be_nil
+
+    # now sign the message to have a permanently valid id
+    e.sign($secret_key)
     i = e.id
     expect(i).must_be_kind_of String
     expect(i.length).must_equal 64
     expect(i.encoding).wont_equal Encoding::BINARY
-
-    ### New Event ###
-
-    # the id is created automatically
-    e = text_note()
-    i = e.id
-    expect(i).must_be_kind_of String
-    expect(i.length).must_equal 64
-    expect(i.encoding).wont_equal Encoding::BINARY
-
-    # the digest has already been created
-    d = e.digest
-    expect(d).must_be_kind_of String
-    expect(d.length).must_equal 32
-    expect(d.encoding).must_equal Encoding::BINARY
   end
 
-  it "signs the event, given a binary private key" do
-    e = text_note().sign($sk)
+  it "signs the event, given a private key in hex format" do
+    e = text_note().sign($secret_key)
     signature = e.signature
 
     # check signature
@@ -112,26 +105,26 @@ describe Event do
     expect(sig.length).must_equal 128
 
     # sign it again, get a new signature
-    sign2 = e.sign($sk)
+    sign2 = e.sign($secret_key)
     expect(sign2).wont_equal signature
 
     # negative testing
-    expect { e.sign('a'.b * 31) }.must_raise SizeError
-    expect { e.sign('a' * 32) }.must_raise EncodingError
+    expect { e.sign('a' * 32) }.must_raise SizeError
+    expect { e.sign('a'.b * 32) }.must_raise EncodingError
   end
 
   it "has a formalized Key-Value format" do
     e = text_note()
     h = e.to_h
     expect(h).must_be_kind_of Hash
-    expect(h.fetch :id).must_be_kind_of String
+    expect(h.fetch :id).must_be_nil
     expect(h.fetch :pubkey).must_be_kind_of String
     expect(h.fetch :created_at).must_be_kind_of Integer
     expect(h.fetch :kind).must_be_kind_of Integer
     expect(h.fetch :content).must_be_kind_of String
-    expect(h.fetch :sig).must_be_empty
+    expect(h.fetch :sig).must_be_nil
 
-    e.sign($sk)
+    e.sign($secret_key)
     h = e.to_h
     expect(h).must_be_kind_of Hash
     expect(h.fetch :id).must_be_kind_of String
@@ -147,7 +140,7 @@ describe Event do
     j = e.to_json
     expect(j).must_be_kind_of(String)
 
-    e.sign($sk)
+    e.sign($secret_key)
     js = e.to_json
     expect(js.length).must_be :>, j.length
   end
@@ -177,6 +170,7 @@ describe Event do
 
     it "references prior events" do
       p = text_note()
+      p.sign($secret_key)
       e = text_note()
       e.ref_event(p.id)
       expect(e.tags).wont_be_empty
@@ -187,12 +181,12 @@ describe Event do
 
     it "references known public keys" do
       e = text_note()
-      _, _, hex = Nostr.keys
-      e.ref_pubkey(hex)
+      _, pubkey = Nostr.keypair
+      e.ref_pubkey(pubkey)
       expect(e.tags).wont_be_empty
       expect(e.tags.length).must_equal 1
       expect(e.tags[0][0]).must_equal 'p'
-      expect(e.tags[0][1]).must_equal hex
+      expect(e.tags[0][1]).must_equal pubkey
     end
   end
 end

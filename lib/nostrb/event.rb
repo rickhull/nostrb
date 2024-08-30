@@ -88,70 +88,71 @@ module Nostr
       h
     end
 
-    attr_reader :content, :kind, :created_at, :pubkey, :signature, :tags
+    attr_reader :content, :pubkey, :kind, :tags,
+                :created_at, :id, :signature
     attr_accessor :max_tags
 
     # pubkey: required
-    def initialize(content = '', kind: 1, pubkey:)
+    def initialize(content = '', pubkey:, kind: 1)
       @content = Nostr.text!(content)
       @kind = Nostr.integer!(kind)
       @pubkey = Nostr.text!(pubkey, 64)
       @tags = []
       @created_at = nil
-      @digest = nil
+      @id = nil
       @signature = nil
       @max_tags = 99
     end
 
-    # conditionally initialize @created_at, return ruby array
+    # always reset @created_at to the current time
+    # return ruby array corresponding to NIP-01 serialization
     def serialize
-      @created_at ||= Time.now.to_i
+      @created_at = Time.now.to_i
       [0, @pubkey, @created_at, @kind, @tags, @content]
     end
 
-    # JSON string, the array from serialize() above
+    # NIP-01 serialization in JSON form
+    # return string
     def to_s
       Nostr.json(self.serialize)
     end
 
-    # assign @digest, return 32 bytes binary
-    def digest(memo: true)
-      return @digest.to_s if memo and @digest
-
-      # we are creating or recreating the event
-      @created_at = nil
-      @digest = Nostr.digest(self.to_s)
-    end
-
-    # return 64 bytes of hexadecimal, ASCII encoded
-    def id
-      SchnorrSig.bin2hex self.digest(memo: true)
+    # compute SHA256 digest for the current moment
+    def digest
+      Nostr.digest(self.to_s)
     end
 
     # return a Ruby hash, suitable for JSON conversion to NIPS01 Event object
     def to_h
-      Hash[id: self.id,
+      Hash[id: @id,
            pubkey: @pubkey,
-           created_at: @created_at,
+           created_at: @created_at || Time.now.to_i,
            kind: @kind,
            tags: @tags,
            content: @content,
-           sig: self.sig.to_s,
+           sig: self.sig,
           ]
     end
 
     # before signing, return the array serialization
     # after signing, return the full object
     def to_json
-      signed? ? Nostr.json(self.to_h) : self.to_s
+      @signature ? Nostr.json(self.to_h) : self.to_s
     end
 
-    # assign @signature, return 64 bytes binary
+    # secret key is 64 bytes hex
+    # assign @signature, 64 bytes binary
     # signing will reset created_at and thus the digest / id
+    # return self
     def sign(secret_key)
-      secret_key = SchnorrSig.hex2bin(secret_key) if secret_key.length == 64
-      @signature = SchnorrSig.sign(Nostr.binary!(secret_key, 32),
-                                   self.digest(memo: false))
+      # fail early if we don't like the secret_key
+      sk = SchnorrSig.hex2bin(Nostr.text!(secret_key, 64))
+      # this value is critical for the @id and @signature
+      d = self.digest # resets @created_at
+      # attempt signing
+      @signature = SchnorrSig.sign(sk, d)
+      # set the @id if we've gotten this far
+      @id = SchnorrSig.bin2hex(d)
       self
     end
 
@@ -162,7 +163,7 @@ module Nostr
     # nil unless signed
     # return 128 bytes hex encoded
     def sig
-      @signature ? SchnorrSig.bin2hex(@signature) : nil
+      SchnorrSig.bin2hex(@signature) if @signature
     end
 
     # add an array of 2+ strings to @tags
