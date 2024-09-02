@@ -38,13 +38,13 @@ module Nostr
     def self.hash(json_str)
       h = Nostr.parse(json_str)
       Nostr.check!(h, Hash)
-      Hash[ id:            Nostr.text!(h.fetch("id"), 64),
-            pubkey:        Nostr.text!(h.fetch("pubkey"), 64),
-            kind:       Nostr.integer!(h.fetch("kind")),
-            content:       Nostr.text!(h.fetch("content")),
-            tags:          Nostr.tags!(h.fetch("tags")),
-            created_at: Nostr.integer!(h.fetch("created_at")),
-            sig:           Nostr.text!(h.fetch("sig"), 128),
+      Hash[ id:        Nostr.text!(h.fetch("id"), 64),
+            pubkey:    Nostr.text!(h.fetch("pubkey"), 64),
+            kind:       Nostr.int!(h.fetch("kind")),
+            content:   Nostr.text!(h.fetch("content")),
+            tags:      Nostr.tags!(h.fetch("tags")),
+            created_at: Nostr.int!(h.fetch("created_at")),
+            sig:       Nostr.text!(h.fetch("sig"), 128),
           ]
     end
 
@@ -95,7 +95,7 @@ module Nostr
     # pubkey: required
     def initialize(content = '', pubkey:, kind: 1)
       @content = Nostr.text!(content)
-      @kind = Nostr.integer!(kind)
+      @kind = Nostr.int!(kind)
       @pubkey = Nostr.text!(pubkey, 64)
       @tags = []
       @created_at = Time.now.to_i
@@ -186,7 +186,7 @@ module Nostr
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.integer!(kind), Nostr.text!(pubkey, 64), d_tag].join(':')
+      val = [Nostr.int!(kind), Nostr.text!(pubkey, 64), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end

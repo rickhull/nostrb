@@ -3,7 +3,8 @@ require 'json'
 require 'digest'
 
 module Nostr
-  class SizeError < RuntimeError; end
+  class Error < RuntimeError; end
+  class SizeError < Error; end
 
   #######################################
   # Type Checking and Enforcement
@@ -13,34 +14,14 @@ module Nostr
     val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
   end
 
-  # enforce String
-  # enforce nonbinary
-  # enforce length (optional)
-  # return str
+  def self.int!(int) = check!(int, Integer)
+
+  # enforce nonbinary String, length(optional), return str
   def self.text!(str, length = nil)
     check!(str, String)
     raise(EncodingError, str.encoding) if str.encoding == Encoding::BINARY
     raise(SizeError, str.length) if !length.nil? and length != str.length
     str
-  end
-
-  # check String
-  # check nonbinary
-  # check length (optional)
-  # return true or false
-  #   This method has similar logic to the above method, but we don't want to
-  #   rescue here, nor do we want this implementation there, because the above
-  #   implementation takes care to raise different types of exceptions.
-  #def self.text?(str, length = nil)
-  #  str.is_a?(String) and
-  #    (str.encoding != Encoding::BINARY)) and
-  #    (length.nil? or length == str.length)
-  #end
-
-  # enforce Integer
-  # return int
-  def self.integer!(int)
-    check!(int, Integer)
   end
 
   # enforce Array[Array[String(nonbinary)]]

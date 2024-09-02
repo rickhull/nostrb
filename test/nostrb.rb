@@ -29,8 +29,8 @@ describe Nostr do
 
       it "enforces Integer class where expected" do
         int = 1234
-        expect(Nostr.integer!(int)).must_equal int
-        expect { Nostr.integer!('1234') }.must_raise TypeError
+        expect(Nostr.int!(int)).must_equal int
+        expect { Nostr.int!('1234') }.must_raise TypeError
       end
 
       it "enforces a particular tag structure where expected" do
