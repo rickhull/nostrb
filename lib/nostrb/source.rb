@@ -13,10 +13,8 @@ module Nostr
       @pubkey = Nostr.text!(pubkey, 64)
     end
 
-    # returns an Event, kind: 1, text_note
-    def text_note(content)
-      Event.new(content, kind: 1, pubkey: @pubkey)
-    end
+    # Return an Event, kind: 1, text_note
+    def text_note(content) = Event.new(content, kind: 1, pubkey: @pubkey)
 
     # Input
     #   name: string

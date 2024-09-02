@@ -16,7 +16,7 @@ module Nostr
 
   def self.int!(int) = check!(int, Integer)
 
-  # enforce nonbinary String, length(optional), return str
+  # enforce nonbinary String, length(optional); return str
   def self.text!(str, length = nil)
     check!(str, String)
     raise(EncodingError, str.encoding) if str.encoding == Encoding::BINARY
@@ -24,13 +24,10 @@ module Nostr
     str
   end
 
-  # enforce Array[Array[String(nonbinary)]]
-  # return ary
+  # enforce Array[Array[String(nonbinary)]]; return ary
   def self.tags!(ary)
     check!(ary, Array).each { |a|
-      check!(a, Array).each { |s|
-        Nostr.text!(s)
-      }
+      check!(a, Array).each { |s| Nostr.text!(s) }
     }
   end
 
@@ -51,30 +48,19 @@ module Nostr
     space_before: '',
   }
 
-  # convert a string of JSON
-  # return a ruby object, likely hash or array
-  def self.parse(json)
-    Nostr.text!(json)
-    JSON.parse(json, **JSON_OPTIONS)
-  end
+  # convert a string of JSON; return a ruby object, likely hash or array
+  def self.parse(json) = JSON.parse(json, **JSON_OPTIONS)
 
-  # convert a ruby object, likely hash or array
-  # return a string of JSON
-  def self.json(object)
-    JSON.generate(object, **JSON_OPTIONS)
-  end
+  # convert a ruby object, likely hash or array; return a string of JSON
+  def self.json(object) = JSON.generate(object, **JSON_OPTIONS)
 
 
   ####################################
   # Utilities
 
   # return 32 bytes binary
-  def self.digest(str)
-    Digest::SHA256.digest(str)
-  end
+  def self.digest(str) = Digest::SHA256.digest(str)
 
   # return [secret key (hex), public key (hex)]
-  def self.keypair
-    SchnorrSig.keypair.map { |bin| SchnorrSig.bin2hex(bin) }
-  end
+  def self.keypair = SchnorrSig.keypair.map { |bin| SchnorrSig.bin2hex(bin) }
 end

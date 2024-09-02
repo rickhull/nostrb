@@ -13,7 +13,6 @@ Gem::Specification.new do |s|
   s.files = %w[nostrb.gemspec VERSION Rakefile]
   s.files += Dir['lib/**/*.rb']
   s.files += Dir['test/**/*.rb']
-  # s.files += Dir['demo/**/*.rb']
 
-  s.add_dependency "schnorr_sig", "~> 0.2"
+  s.add_dependency "schnorr_sig", "~> 1.0"
 end
