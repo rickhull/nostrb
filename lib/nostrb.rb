@@ -16,12 +16,27 @@ module Nostr
 
   def self.int!(int) = check!(int, Integer)
 
-  # enforce nonbinary String, length(optional); return str
-  def self.text!(str, length = nil)
+  # enforce String
+  # enforce encoding (optional)
+  # enforce length (optional)
+  # return str
+  def self.str!(str, binary: nil, length: nil)
     check!(str, String)
-    raise(EncodingError, str.encoding) if str.encoding == Encoding::BINARY
+    if !binary.nil? and !binary == (str.encoding == Encoding::BINARY)
+      raise(EncodingError, str.encoding)
+    end
     raise(SizeError, str.length) if !length.nil? and length != str.length
     str
+  end
+
+  # enforce binary String, length(optional); return str
+  def self.binary!(str, length = nil)
+    str!(str, binary: true, length: length)
+  end
+
+  # enforce nonbinary String, length(optional); return str
+  def self.text!(str, length = nil)
+    str!(str, binary: false, length: length)
   end
 
   # enforce Array[Array[String(nonbinary)]]; return ary
