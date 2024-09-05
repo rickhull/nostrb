@@ -75,4 +75,61 @@ module Nostr
     end
     alias_method :delete, :deletion_request
   end
+
+
+  # ["EVENT", <event json>]
+  # ["REQ", <subscription_id>, <filters1>, <filters2>, ...]
+  # ["CLOSE", <subscription_id>]
+
+  # filter:
+  #   {
+  #     "ids": <a list of event ids>,
+  #     "authors": <a list of lowercase pubkeys,
+  #                 the pubkey of an event must be one of these>,
+  #     "kinds": <a list of a kind numbers>,
+  #     "#<single-letter (a-zA-Z)>": <a list of tag values,
+  #                                   for #e — a list of event ids,
+  #                                   for #p — a list of pubkeys, etc.>,
+  #     "since": <an integer unix timestamp in seconds.
+  #               Events must have a created_at >= to this to pass>,
+  #     "until": <an integer unix timestamp in seconds.
+  #               Events must have a created_at <= to this to pass>,
+  #     "limit": <maximum number of events relays SHOULD return
+  #               in the initial query>
+  #  }
+
+  # TODO: create Nostr.filter!
+
+  # op = Operator.new(subscription_id)
+
+  # publish text note
+  # signed = Source.new(pk).text_note('hello').sign(sk)
+  # op.publish(signed) => ["EVENT", signed.to_json]
+
+  # subscribe to an event
+  # filter = { ids: [eid] }
+  # op.subscribe(filter)
+  # subscribe to an author
+
+  # subscribe to profile changes in the last 5 minutes
+
+  class Operator
+    def initialize(subscription_id)
+      @sid = Nostr.txt!(subscription_id)
+      raise "too long" if @sid.length > 64
+    end
+
+    def publish(signed)
+      Nostr.json(["EVENT", signed.to_json])
+    end
+
+    def subscribe(*filters)
+      # TODO: Nostr.filter!
+      Nostr.json(["REQ", @sid, *filters.each { |f| Nostr.json(f) }])
+    end
+
+    def close
+      Nostr.json(["CLOSE", @sid])
+    end
+  end
 end
