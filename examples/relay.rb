@@ -2,8 +2,8 @@ require 'nostrb/source'
 
 include Nostr
 
-secret_key, pubkey = Nostr.keypair
-source = Source.new(pubkey)
+sk, pk = SchnorrSig.keypair
+source = Source.new(pk)
 
 puts "Public key:"
 puts source.pubkey
@@ -12,27 +12,27 @@ puts
 msg = source.text_note('hello world')
 
 puts "Created message:"
-puts msg
+puts msg.to_a.inspect
 puts
 
-msg.sign(secret_key)
+signed = msg.sign(sk)
 
 puts "Signed message:"
-p msg
+puts signed.to_h
 puts
 
 # msg is ready for delivery
 # relay receives JSON string
 
 puts "Relay receives:"
-puts msg.to_json
+puts signed.to_json
 puts
 
 # verify the signature
 # if no errors raised, signature is verified
 # decompose into fields (Ruby hash buckets)
 
-hash = Event.verify(msg.to_json)
+hash = SignedEvent.verify(signed.to_json)
 puts "Signature verified:"
 p hash
 puts
@@ -42,11 +42,11 @@ puts
 # which we have already done
 
 puts "Relay serialization:"
-puts Event.serialize(hash)
+puts Event.serialize(hash).inspect
 puts
 
 # if we had to: send received json to the the destination
 
 puts "Relay sends:"
-puts msg.to_json
+puts signed.to_json
 puts

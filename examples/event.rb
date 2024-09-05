@@ -3,7 +3,8 @@ require 'nostrb/event'
 include Nostr
 
 puts "Key Generation"
-secret_key, pubkey = Nostr.keypair
+sk, pk = SchnorrSig.keypair
+secret_key, pubkey = [sk, pk].map { |s| SchnorrSig.bin2hex s }
 puts "Secret key: #{secret_key}"
 puts "Public key: #{pubkey}"
 puts
@@ -12,22 +13,18 @@ puts "Hello World"
 puts "==========="
 puts
 
-puts "Unsigned JSON"
-hello = Event.new('hello world', pubkey: pubkey)
-puts hello.to_json
+puts "Serialized"
+event = Event.new('hello world', pk: pk)
+puts event.to_a.inspect
 puts
 
-puts "Unsigned Object"
-puts hello.to_h
-puts
-
-hello.sign(secret_key)
-puts "Signed Object"
-puts hello.to_h
+puts "Signed Hash"
+signed = event.sign(sk)
+puts signed.to_h
 puts
 
 puts "Signed JSON"
-puts hello.to_json
+puts signed.to_json
 puts
 
 puts
@@ -35,20 +32,17 @@ puts "Tagged Event"
 puts "============"
 puts
 
-puts "Unsigned JSON"
-tagged = Event.new('goodbye world', pubkey: pubkey)
-tagged.ref_event(hello.id)
-puts tagged.to_json
+puts "Serialized"
+tagged = Event.new('goodbye world', pk: pk)
+tagged.ref_event(signed.id)
+puts tagged.to_a.inspect
 puts
 
-puts "Unsigned Object"
-puts tagged.to_h
-puts
-
-puts "Signed Object"
-tagged.sign(secret_key)
-puts tagged.to_h
+puts "Signed Hash"
+signed = tagged.sign(sk)
+puts signed.to_h
 puts
 
 puts "Signed JSON"
-puts tagged.to_json
+puts signed.to_json
+puts

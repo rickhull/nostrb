@@ -20,7 +20,7 @@ to generate outbound events, as a Nostr client or source.
 
 Zero networking or storage is handled by this library at this time.  While
 that may be added in the future, the limited goal of this library is to
-provide any fundamentals related to Nostr Events that a client or relay may
+provide the fundamentals related to Nostr Events that a client or relay may
 need.
 
 # Usage
@@ -40,8 +40,8 @@ Or add to your project Gemfile: `gem 'nostrb'`
 ```ruby
 require 'nostrb/source'
 
-# generate secret key, public key (hex format)
-sk, pk = Nostr.keypair
+# generate secret key, public key
+sk, pk = SchnorrSig.keypair
 
 # client needs a public key
 client = Nostr::Source.new(pk)
@@ -50,10 +50,10 @@ client = Nostr::Source.new(pk)
 hello = client.text_note('hello world')
 
 # sign it with the secret key
-hello.sign(sk)
+signed = hello.sign(sk)
 
-# dump the event in wire format
-hello.to_json # => long JSON string
+# dump the signed event in wire format
+signed.to_json # => long JSON string
 ```
 
 ## Fundamentals

@@ -4,10 +4,10 @@ module Nostr
   class Event
 
     # Event
-    # content: any string
-    # pubkey: 64 hex chars (32B binary)
-    # kind: 0..65535
-    # tags: Array[Array[string]]
+    #   content: any string
+    #   pubkey: 64 hex chars (32B binary)
+    #   kind: 0..65535
+    #   tags: Array[Array[string]]
 
     # Convert Hash[symbol => val] to Array[val]
     # This should correspond directly to Event#serialize
@@ -21,6 +21,7 @@ module Nostr
              hash.fetch(:content) ]
     end
 
+    # return 32 bytes binary, the digest of a JSON array
     def self.digest(ary_or_hsh)
       a = ary_or_hsh.is_a?(Hash) ? serialize(ary_or_hsh) : ary_or_hsh
       Nostr.digest(Nostr.json(a))
@@ -37,22 +38,14 @@ module Nostr
 
     alias_method :to_s, :content
 
-    def pubkey
-      SchnorrSig.bin2hex(@pk)
-    end
-
-    # Return ruby array corresponding to NIP-01 serialization
     def serialize(created_at)
-      [0, self.pubkey, created_at, @kind, @tags, @content]
+      [0, self.pubkey, Nostr.int!(created_at), @kind, @tags, @content]
     end
 
-    def to_a
-      serialize(Time.now.to_i)
-    end
-
-    def digest(created_at)
-      Event.digest(serialize(created_at))
-    end
+    def to_a = serialize(Time.now.to_i)
+    def pubkey = SchnorrSig.bin2hex(@pk)
+    def digest(created_at) = Event.digest(serialize(created_at))
+    def sign(sk) = SignedEvent.new(self, sk)
 
     #
     # Tags
@@ -136,20 +129,12 @@ module Nostr
       @event = Nostr.check!(event, Event)
       @created_at = Time.now.to_i
       @digest = @event.digest(@created_at)
-      @signature = SchnorrSig.sign(@digest, Nostr.binary!(sk, 32))
+      @signature = SchnorrSig.sign(Nostr.binary!(sk, 32), @digest)
     end
 
-    def to_s
-      @event.to_s
-    end
-
-    def id
-      SchnorrSig.bin2hex(@digest)
-    end
-
-    def sig
-      SchnorrSig.bin2hex(@signature)
-    end
+    def to_s = @event.to_s
+    def id = SchnorrSig.bin2hex(@digest)
+    def sig = SchnorrSig.bin2hex(@signature)
 
     def to_h
       Hash[ content: @event.content,
@@ -161,8 +146,6 @@ module Nostr
             sig: self.sig ]
     end
 
-    def to_json
-      Nostr.json(self.to_h)
-    end
+    def to_json = Nostr.json(self.to_h)
   end
 end

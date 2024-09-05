@@ -1,29 +1,26 @@
 require 'nostrb/source'
 require 'minitest/autorun'
 
-### TODO elsewhere: add binary: false for content strings
-
-
 include Nostr
 
 describe Source do
-  $skey, $pubkey = Nostr.keypair
+  $sk, $pk = SchnorrSig.keypair
 
   describe "instantiation" do
-    it "wraps a hex-formatted pubkey" do
-      s = Source.new($pubkey)
+    it "wraps a binary pubkey" do
+      s = Source.new($pk)
       expect(s).must_be_kind_of Source
-      expect(s.pubkey).must_equal $pubkey
+      expect(s.pk).must_equal $pk
 
       expect {
-        Source.new(SchnorrSig.hex2bin($pubkey))
+        Source.new(SchnorrSig.bin2hex($pk))
       }.must_raise EncodingError
     end
   end
 
   describe "event creation" do
     it "creates text_note events" do
-      s = Source.new($pubkey)
+      s = Source.new($pk)
       e = s.text_note('hello world')
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 1
@@ -31,7 +28,7 @@ describe Source do
     end
 
     it "creates set_metadata events" do
-      s = Source.new($pubkey)
+      s = Source.new($pk)
       e = s.set_metadata(name: 'Bob Loblaw',
                          about: "Bob Loblaw's Law Blog",
                          picture: "https://localhost/me.jpg")
@@ -49,7 +46,7 @@ describe Source do
         SchnorrSig.bin2hex(Random.bytes(32)) => ['baz', 'quux'],
         SchnorrSig.bin2hex(Random.bytes(32)) => ['asdf', '123'],
       }
-      s = Source.new($pubkey)
+      s = Source.new($pk)
       e = s.contact_list(pubkey_hsh)
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 3

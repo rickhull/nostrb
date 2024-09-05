@@ -3,154 +3,104 @@ require 'minitest/autorun'
 
 include Nostr
 
-$secret_key, $pubkey = Nostr.keypair
+$sk, $pk = SchnorrSig.keypair
 
 def text_note(content = '')
-  Event.new(content, kind: 1, pubkey: $pubkey)
+  Event.new(content, kind: 1, pk: $pk)
 end
 
-$json = text_note().sign($secret_key).to_json
+def signed_note(content = '')
+  SignedEvent.new(text_note(content), $sk)
+end
+
+# different keys than generated / used above
+$json = %q[{"content":"hello world","pubkey":"18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d","kind":1,"tags":[],"created_at":1725496781,"id":"7f6f1c7ee406a450b581c62754fa66ffaaff0504b40ced02a6d0fc3806f1d44b","sig":"8bb25f403e90cbe83629098264327b56240a703820b26f440a348ae81a64ec490c18e61d2942fe300f26b93a1534a94406aec12f5a32272357263bea88fccfda"}]
+$hash = {
+  :content=>"hello world",
+  :pubkey=>"18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
+  :kind=>1,
+  :tags=>[],
+  :created_at=>1725496781,
+  :id=>"7f6f1c7ee406a450b581c62754fa66ffaaff0504b40ced02a6d0fc3806f1d44b",
+  :sig=>"8bb25f403e90cbe83629098264327b56240a703820b26f440a348ae81a64ec490c18e61d2942fe300f26b93a1534a94406aec12f5a32272357263bea88fccfda",
+}
 
 describe Event do
   describe "class functions" do
-    it "validates a JSON string and returns a ruby hash" do
-      h = Event.hash($json)
-      expect(h).must_be_kind_of Hash
-      [:id, :pubkey, :kind, :content, :tags, :created_at, :sig].each { |sym|
-        expect(h.key?(sym)).must_equal true
-      }
-
-      expect { Event.hash('hello world') }.must_raise JSON::ParserError
-      expect { Event.hash('{}') }.must_raise KeyError
+    it "serializes a Ruby hash representing a SignedEvent to a Ruby array" do
+      a = Event.serialize($hash)
+      expect(a).must_be_kind_of Array
+      expect(a.length).must_equal 6
     end
 
-    it "serializes a Ruby hash to a JSON array" do
-      h = Event.hash($json)
-      s = Event.serialize(h)
-      p = JSON.parse(s)
-      expect(p).must_be_kind_of Array
-      expect(p.length).must_equal 6
+    it "computes a 32 byte digest of a JSON serialization" do
+      a = Event.serialize($hash)
+      d = Event.digest(a)
+      expect(d).must_be_kind_of String
+      expect(d.length).must_equal 32
+      expect(d.encoding).must_equal Encoding::BINARY
     end
 
-    it "verifies the signature and validates the id of a JSON event string" do
-      h = Event.verify($json)
-      expect(h).must_be_kind_of Hash
+    it "also accepts a hash, which it will serialize" do
+      a = Event.serialize($hash)
+      d = Event.digest(a)
+      d2 = Event.digest($hash)
+      expect(d2).must_equal d
     end
   end
 
-  it "wraps a string of content" do
-    content = 'hello world'
-    expect(text_note(content).content).must_equal content
+  describe "initialization" do
+    it "wraps a string of content" do
+      content = 'hello world'
+      expect(text_note(content).content).must_equal content
+    end
+
+    it "requires a _kind_ integer, defaulting to 1" do
+      expect(Event.new(kind: 0, pk: $pk).kind).must_equal 0
+      expect(Event.new(pk: $pk).kind).must_equal 1
+    end
+
+    it "requires a public key in binary format" do
+      expect(text_note().pk).must_equal $pk
+      expect {
+        Event.new(kind: 1, pk: SchnorrSig.bin2hex($pk))
+      }.must_raise EncodingError
+      expect {
+        Event.new(kind: 1, pk: "0123456789abcdef".b)
+      }.must_raise SizeError
+      expect { Event.new }.must_raise
+    end
   end
 
-  it "requires a _kind_ integer, defaulting to 1" do
-    expect(Event.new(kind: 0, pubkey: $pubkey).kind).must_equal 0
-    expect(Event.new(pubkey: $pubkey).kind).must_equal 1
+  it "provides its content in a string context" do
+    s = text_note('hello').to_s
+    expect(s).must_equal 'hello'
   end
 
-  it "requires a pubkey in hex format" do
-    expect(text_note().pubkey).must_equal $pubkey
-    expect {
-      Event.new(kind: 1, pubkey: SchnorrSig.hex2bin($pubkey))
-    }.must_raise EncodingError
-    expect {
-      Event.new(kind: 1, pubkey: "0123456789abcdef")
-    }.must_raise SizeError
-    expect { Event.new }.must_raise
+  it "serializes to an array starting with 0, length 6" do
+    a = text_note('hello').to_a
+    expect(a).must_be_kind_of Array
+    expect(a[0]).must_equal 0
+    expect(a.length).must_equal 6
+    expect(a[5]).must_equal 'hello'
   end
 
-  it "generates a timestamp at creation time" do
-    expect(text_note().created_at).must_be_kind_of Integer
+  it "has a pubkey in hex format" do
+    pubkey = text_note().pubkey
+    expect(pubkey).must_be_kind_of String
+    expect(pubkey.length).must_equal 64
   end
 
-  it "has empty id and signature at creation time" do
-    expect(text_note().id).must_be_empty
-    expect(text_note().signature).must_be_empty
-  end
-
-  it "can create a digest, but not an id, before signing time" do
+  it "requires a timestamp to create a SHA256 digest" do
     e = text_note()
-    d = e.digest
-
-    # the digest represents what the id would be at signing time
-    # but this value will change when the timestamp is set, at signing time
-    # so this value is not useful before signing time as it will change
+    d = e.digest(Time.now.to_i)
     expect(d).must_be_kind_of String
     expect(d.length).must_equal 32
     expect(d.encoding).must_equal Encoding::BINARY
-
-    # the id is not available until the event is signed
-    expect(e.id).must_be_empty
-
-    # now sign the message to have a permanently valid id
-    e.sign($secret_key)
-    i = e.id
-    expect(i).must_be_kind_of String
-    expect(i.length).must_equal 64
-    expect(i.encoding).wont_equal Encoding::BINARY
   end
 
-  it "signs the event, given a private key in hex format" do
-    e = text_note().sign($secret_key)
-    signature = e.signature
-
-    # check signature
-    expect(signature).must_be_kind_of String
-    expect(signature.encoding).must_equal Encoding::BINARY
-    expect(signature.length).must_equal 64
-
-    # check signed event
-    expect(e.created_at).wont_be_nil
-
-    # check sig hex
-    sig = e.sig
-    expect(sig).must_be_kind_of String
-    expect(sig.encoding).wont_equal Encoding::BINARY
-    expect(sig.length).must_equal 128
-
-    # sign it again, get a new signature
-    sign2 = e.sign($secret_key)
-    expect(sign2).wont_equal signature
-
-    # negative testing
-    expect { e.sign('a' * 32) }.must_raise SizeError
-    expect { e.sign('a'.b * 32) }.must_raise EncodingError
-  end
-
-  it "has a formalized Key-Value format" do
-    e = text_note()
-    h = e.to_h
-    expect(h).must_be_kind_of Hash
-    expect(h.fetch :id).must_be_kind_of String
-    expect(h.fetch :id).must_be_empty
-    expect(h.fetch :pubkey).must_be_kind_of String
-    expect(h.fetch :created_at).must_be_kind_of Integer
-    expect(h.fetch :kind).must_be_kind_of Integer
-    expect(h.fetch :content).must_be_kind_of String
-    expect(h.fetch :sig).must_be_kind_of String
-    expect(h.fetch :sig).must_be_empty
-
-    e.sign($secret_key)
-    h = e.to_h
-    expect(h).must_be_kind_of Hash
-    expect(h.fetch :id).must_be_kind_of String
-    expect(h.fetch :id).wont_be_empty
-    expect(h.fetch :pubkey).must_be_kind_of String
-    expect(h.fetch :created_at).must_be_kind_of Integer
-    expect(h.fetch :kind).must_be_kind_of Integer
-    expect(h.fetch :content).must_be_kind_of String
-    expect(h.fetch :sig).must_be_kind_of String
-    expect(h.fetch :sig).wont_be_empty
-  end
-
-  it "has a formalized JSON format based on the object format" do
-    e = text_note()
-    j = e.to_json
-    expect(j).must_be_kind_of(String)
-
-    e.sign($secret_key)
-    js = e.to_json
-    expect(js.length).must_be :>, j.length
+  it "provides a SignedEvent when signed with a secret key" do
+    expect(text_note().sign($sk)).must_be_kind_of SignedEvent
   end
 
   describe "event tags" do
@@ -178,23 +128,85 @@ describe Event do
 
     it "references prior events" do
       p = text_note()
-      p.sign($secret_key)
+      s = p.sign($sk)
+
       e = text_note()
-      e.ref_event(p.id)
+      e.ref_event(s.id)
       expect(e.tags).wont_be_empty
       expect(e.tags.length).must_equal 1
       expect(e.tags[0][0]).must_equal 'e'
-      expect(e.tags[0][1]).must_equal p.id
+      expect(e.tags[0][1]).must_equal s.id
     end
 
     it "references known public keys" do
       e = text_note()
-      _, pubkey = Nostr.keypair
+      pubkey = SchnorrSig.bin2hex $pk
       e.ref_pubkey(pubkey)
       expect(e.tags).wont_be_empty
       expect(e.tags.length).must_equal 1
       expect(e.tags[0][0]).must_equal 'p'
       expect(e.tags[0][1]).must_equal pubkey
     end
+  end
+end
+
+describe SignedEvent do
+  describe "class functions" do
+    it "validates a JSON string and returns a ruby hash" do
+      h = SignedEvent.hash($json)
+      expect(h).must_be_kind_of Hash
+      [:id, :pubkey, :kind, :content, :tags, :created_at, :sig].each { |sym|
+        expect(h.key?(sym)).must_equal true
+      }
+
+      expect { SignedEvent.hash('hello world') }.must_raise JSON::ParserError
+      expect { SignedEvent.hash('{}') }.must_raise KeyError
+    end
+
+    it "verifies the signature and validates the id of a JSON event string" do
+      h = SignedEvent.verify($json)
+      expect(h).must_be_kind_of Hash
+    end
+  end
+
+  it "generates a timestamp at creation time" do
+    expect(signed_note().created_at).must_be_kind_of Integer
+  end
+
+  it "signs the event, given a private key in binary format" do
+    signed = text_note().sign($sk)
+    expect(signed).must_be_kind_of SignedEvent
+    expect(signed.id).must_be_kind_of String
+    expect(signed.created_at).must_be_kind_of Integer
+
+    # check signature
+    signature = signed.signature
+    expect(signature).must_be_kind_of String
+    expect(signature.encoding).must_equal Encoding::BINARY
+    expect(signature.length).must_equal 64
+
+    # check sig hex
+    sig = signed.sig
+    expect(sig).must_be_kind_of String
+    expect(sig.encoding).wont_equal Encoding::BINARY
+    expect(sig.length).must_equal 128
+  end
+
+  it "has a formalized Key-Value format" do
+    h = signed_note().to_h
+    expect(h).must_be_kind_of Hash
+    expect(h.fetch :id).must_be_kind_of String
+    expect(h.fetch :id).wont_be_empty
+    expect(h.fetch :pubkey).must_be_kind_of String
+    expect(h.fetch :created_at).must_be_kind_of Integer
+    expect(h.fetch :kind).must_be_kind_of Integer
+    expect(h.fetch :content).must_be_kind_of String
+    expect(h.fetch :sig).must_be_kind_of String
+    expect(h.fetch :sig).wont_be_empty
+  end
+
+  it "has a formalized JSON format based on the object format" do
+    j = signed_note().to_json
+    expect(j).must_be_kind_of(String)
   end
 end
