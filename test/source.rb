@@ -27,11 +27,11 @@ describe Source do
       expect(e.content).must_equal 'hello world'
     end
 
-    it "creates set_metadata events" do
+    it "creates user_metadata events" do
       s = Source.new($pk)
-      e = s.set_metadata(name: 'Bob Loblaw',
-                         about: "Bob Loblaw's Law Blog",
-                         picture: "https://localhost/me.jpg")
+      e = s.user_metadata(name: 'Bob Loblaw',
+                          about: "Bob Loblaw's Law Blog",
+                          picture: "https://localhost/me.jpg")
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 0
 
@@ -40,20 +40,24 @@ describe Source do
       expect(e.tags).must_be_empty
     end
 
-    it "creates contact_list events" do
+    it "creates follow_list events" do
       pubkey_hsh = {
         SchnorrSig.bin2hex(Random.bytes(32)) => ['foo', 'bar'],
         SchnorrSig.bin2hex(Random.bytes(32)) => ['baz', 'quux'],
         SchnorrSig.bin2hex(Random.bytes(32)) => ['asdf', '123'],
       }
       s = Source.new($pk)
-      e = s.contact_list(pubkey_hsh)
+      e = s.follow_list(pubkey_hsh)
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 3
 
       # above data goes into tags structure, not content
       expect(e.content).must_be_empty
       expect(e.tags).wont_be_empty
+    end
+
+    it "creates deletion_request events" do
+      # TODO
     end
   end
 end

@@ -70,10 +70,10 @@ puts
 
 bart_sk, bart_pk = SchnorrSig.keypair
 bart = Nostr::Source.new(bart_pk)
-profile = bart.set_metadata(name: 'Bart',
-                            about: 'Bartholomew Jojo Simpson',
-                            picture: 'https://upload.wikimedia.org' +
-                            '/wikipedia/en/a/aa/Bart_Simpson_200px.png')
+profile = bart.user_metadata(name: 'Bart',
+                             about: 'Bartholomew Jojo Simpson',
+                             picture: 'https://upload.wikimedia.org' +
+                             '/wikipedia/en/a/aa/Bart_Simpson_200px.png')
 signed = profile.sign(bart_sk)
 
 puts "Content"
@@ -101,7 +101,7 @@ pubkey_hsh = {
   maggie.pubkey => ["wss://thesimpsons.com/", "maggie"],
 }
 
-following = lisa.contact_list(pubkey_hsh)
+following = lisa.follow_list(pubkey_hsh)
 signed = following.sign(lisa_sk)
 
 puts "Content"

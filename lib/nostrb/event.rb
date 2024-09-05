@@ -1,5 +1,14 @@
 require 'nostrb'
 
+# Kind:
+#   0: replaceable -- relay stores only the last message from pubkey
+#   1,2,4..44,1000..9999: regular -- relay stores all
+#   10_000..19_999: replaceable -- relay stores latest(pubkey, kind)
+#   20_000..29_999: ephemeral -- relay doesn't store
+#   30_000..39_999: parameterized replaceable -- latest(pubkey, kind, dtag)
+
+# for replaceable events with same timestamp, lowest id wins
+
 module Nostr
   class Event
 
@@ -22,16 +31,15 @@ module Nostr
     end
 
     # return 32 bytes binary, the digest of a JSON array
-    def self.digest(ary_or_hsh)
-      a = ary_or_hsh.is_a?(Hash) ? serialize(ary_or_hsh) : ary_or_hsh
-      Nostr.digest(Nostr.json(a))
+    def self.digest(ary)
+      Nostr.digest(Nostr.json(ary.is_a?(Hash) ? serialize(ary) : ary))
     end
 
     attr_reader :content, :pk, :kind, :tags
 
     def initialize(content = '', pk:, kind: 1, tags: [])
-      @content = Nostr.text!(content)
-      @pk = Nostr.binary!(pk, 32)
+      @content = Nostr.txt!(content)
+      @pk = Nostr.bin!(pk, 32)
       @kind = Nostr.int!(kind)
       @tags = Nostr.tags!(tags)
     end
@@ -53,23 +61,23 @@ module Nostr
 
     # add an array of 2+ strings to @tags
     def add_tag(tag, value, *rest)
-      @tags.push([Nostr.text!(tag), Nostr.text!(value)] +
-                 rest.each { |s| Nostr.text!(s) })
+      @tags.push([Nostr.txt!(tag), Nostr.txt!(value)] +
+                 rest.each { |s| Nostr.txt!(s) })
     end
 
     # add an event tag based on event id, hex encoded
     def ref_event(eid_hex, *rest)
-      add_tag('e', Nostr.text!(eid_hex, 64), *rest)
+      add_tag('e', Nostr.txt!(eid_hex, 64), *rest)
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
     def ref_pubkey(pubkey, *rest)
-      add_tag('p', Nostr.text!(pubkey, 64), *rest)
+      add_tag('p', Nostr.txt!(pubkey, 64), *rest)
     end
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.int!(kind), Nostr.text!(pubkey, 64), d_tag].join(':')
+      val = [Nostr.int!(kind), Nostr.txt!(pubkey, 64), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end
@@ -91,13 +99,13 @@ module Nostr
     def self.hash(json_str)
       h = Nostr.parse(json_str)
       Nostr.check!(h, Hash)
-      Hash[ content:   Nostr.text!(h.fetch("content")),
-            pubkey:    Nostr.text!(h.fetch("pubkey"), 64),
+      Hash[ content:    Nostr.txt!(h.fetch("content")),
+            pubkey:     Nostr.txt!(h.fetch("pubkey"), 64),
             kind:       Nostr.int!(h.fetch("kind")),
             tags:      Nostr.tags!(h.fetch("tags")),
             created_at: Nostr.int!(h.fetch("created_at")),
-            id:        Nostr.text!(h.fetch("id"), 64),
-            sig:       Nostr.text!(h.fetch("sig"), 128) ]
+            id:         Nostr.txt!(h.fetch("id"), 64),
+            sig:        Nostr.txt!(h.fetch("sig"), 128) ]
     end
 
     # Validate the id (optional) and signature
@@ -125,11 +133,12 @@ module Nostr
 
     attr_reader :event, :created_at, :digest, :signature
 
+    # sk is used to generate @signature and then discarded
     def initialize(event, sk)
       @event = Nostr.check!(event, Event)
       @created_at = Time.now.to_i
       @digest = @event.digest(@created_at)
-      @signature = SchnorrSig.sign(Nostr.binary!(sk, 32), @digest)
+      @signature = SchnorrSig.sign(Nostr.bin!(sk, 32), @digest)
     end
 
     def to_s = @event.to_s

@@ -15,6 +15,7 @@ module Nostr
   end
 
   def self.int!(int) = check!(int, Integer)
+  def self.ary!(ary) = check!(ary, Array)
 
   # enforce String
   # enforce encoding (optional)
@@ -30,20 +31,18 @@ module Nostr
   end
 
   # enforce binary String, length(optional); return str
-  def self.binary!(str, length = nil)
+  def self.bin!(str, length = nil)
     str!(str, binary: true, length: length)
   end
 
   # enforce nonbinary String, length(optional); return str
-  def self.text!(str, length = nil)
+  def self.txt!(str, length = nil)
     str!(str, binary: false, length: length)
   end
 
   # enforce Array[Array[String(nonbinary)]]; return ary
   def self.tags!(ary)
-    check!(ary, Array).each { |a|
-      check!(a, Array).each { |s| Nostr.text!(s) }
-    }
+    ary!(ary).each { |a| ary!(a).each { |s| Nostr.txt!(s) } }
   end
 
 
