@@ -40,7 +40,7 @@ module Nostr
     def initialize(content = '', pk:, kind: 1, tags: [])
       @content = Nostr.txt!(content)
       @pk = Nostr.bin!(pk, 32)
-      @kind = Nostr.int!(kind)
+      @kind = Nostr.kind!(kind)
       @tags = Nostr.tags!(tags)
     end
 
@@ -77,7 +77,7 @@ module Nostr
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.int!(kind), Nostr.txt!(pubkey, 64), d_tag].join(':')
+      val = [Nostr.kind!(kind), Nostr.txt!(pubkey, 64), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end
@@ -101,7 +101,7 @@ module Nostr
       Nostr.check!(h, Hash)
       Hash[ content:    Nostr.txt!(h.fetch("content")),
             pubkey:     Nostr.txt!(h.fetch("pubkey"), 64),
-            kind:       Nostr.int!(h.fetch("kind")),
+            kind:      Nostr.kind!(h.fetch("kind")),
             tags:      Nostr.tags!(h.fetch("tags")),
             created_at: Nostr.int!(h.fetch("created_at")),
             id:         Nostr.txt!(h.fetch("id"), 64),

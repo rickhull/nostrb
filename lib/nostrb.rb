@@ -9,42 +9,49 @@ module Nostr
   #######################################
   # Type Checking and Enforcement
 
-  # raise TypeError or return val
   def self.check!(val, cls)
     val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
   end
 
-  def self.int!(int) = check!(int, Integer)
-  def self.ary!(ary) = check!(ary, Array)
+  def self.int!(int, max = nil)
+    check!(int, Integer)
+    raise(SizeError, "#{int} > #{max} (max)") if !max.nil? and int > max
+    int
+  end
 
-  # enforce String
-  # enforce encoding (optional)
-  # enforce length (optional)
-  # return str
-  def self.str!(str, binary: nil, length: nil)
+  def self.kind!(kind)
+    int!(kind, 65535)
+  end
+
+  def self.ary!(ary, max = nil)
+    check!(ary, Array)
+    if !max.nil? and ary.length > max
+      raise(SizeError, "#{ary.length} > #{max} (max)")
+    end
+    ary
+  end
+
+  def self.str!(str, binary: nil, length: nil, max: nil)
     check!(str, String)
     if !binary.nil? and !binary == (str.encoding == Encoding::BINARY)
       raise(EncodingError, str.encoding)
     end
-    raise(SizeError, str.length) if !length.nil? and length != str.length
+    raise(SizeError, str.length) if !length.nil? and str.length != length
+    raise(SizeError, str.length) if !max.nil? and str.length > max
     str
   end
 
-  # enforce binary String, length(optional); return str
-  def self.bin!(str, length = nil)
-    str!(str, binary: true, length: length)
+  def self.bin!(str, length = nil, max: nil)
+    str!(str, binary: true, length: length, max: max)
   end
 
-  # enforce nonbinary String, length(optional); return str
-  def self.txt!(str, length = nil)
-    str!(str, binary: false, length: length)
+  def self.txt!(str, length = nil, max: nil)
+    str!(str, binary: false, length: length, max: max)
   end
 
-  # enforce Array[Array[String(nonbinary)]]; return ary
   def self.tags!(ary)
-    ary!(ary).each { |a| ary!(a).each { |s| Nostr.txt!(s) } }
+    ary!(ary, 9999).each { |a| ary!(a, 99).each { |s| Nostr.txt!(s) } }
   end
-
 
   #####################################
   # JSON I/O
@@ -62,19 +69,13 @@ module Nostr
     space_before: '',
   }
 
-  # convert a string of JSON; return a ruby object, likely hash or array
   def self.parse(json) = JSON.parse(json, **JSON_OPTIONS)
 
-  # convert a ruby object, likely hash or array; return a string of JSON
   def self.json(object) = JSON.generate(object, **JSON_OPTIONS)
-
 
   ####################################
   # Utilities
 
   # return 32 bytes binary
   def self.digest(str) = Digest::SHA256.digest(str)
-
-  # return [secret key (hex), public key (hex)]
-  def self.keypair = SchnorrSig.keypair.map { |bin| SchnorrSig.bin2hex(bin) }
 end

@@ -83,14 +83,5 @@ describe Nostr do
         }
       end
     end
-
-    it "generates a hex keypair (secret, public)" do
-      s, p = Nostr.keypair
-      [s, p].each { |hex|
-        expect(hex).must_be_kind_of String
-        expect(hex.encoding).wont_equal Encoding::BINARY
-        expect(hex.length).must_equal 64
-      }
-    end
   end
 end
