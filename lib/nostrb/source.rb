@@ -77,6 +77,41 @@ module Nostr
     alias_method :delete, :deletion_request
   end
 
+  module Seconds
+    def milliseconds(i)
+      i / 1000r
+    end
+
+    def seconds(i)
+      i
+    end
+
+    def minutes(i)
+      60 * i
+    end
+
+    def hours(i)
+      60 * minutes(i)
+    end
+
+    def days(i)
+      24 * hours(i)
+    end
+
+    def weeks(i)
+      7 * days(i)
+    end
+
+    def months(i)
+      30 * days(i)
+    end
+
+    def years(i)
+      365 * days(i)
+    end
+  end
+  Seconds.extend(Seconds)
+
   class Filter
     def initialize
       @ids = []
@@ -134,8 +169,11 @@ module Nostr
   end
 
   class Operator
-    def self.sid = SchnorrSig.bin2hex Random.bytes(32)
+    # add a 4th layer of nesting for the array wrapper
+    JSON_OPTIONS = Nostr::JSON_OPTIONS.merge(max_nesting: 4)
 
+    def self.json(array) = JSON.generate(Nostr.ary!(array), **JSON_OPTIONS)
+    def self.sid = SchnorrSig.bin2hex Random.bytes(32)
     def self.generate = new(self.sid)
 
     def initialize(subscription_id)
@@ -143,15 +181,14 @@ module Nostr
       raise "too long" if @sid.length > 64
     end
 
-    def publish(signed) = Nostr.json(["EVENT", signed.to_json])
+    def publish(signed) = Operator.json(["EVENT", signed.to_h])
 
     def subscribe(*filters)
-      Nostr.json(["REQ", @sid, *filters.each { |f|
-                    Nostr.json(Nostr.check!(f, Filter).to_h)
-                  }])
+      Operator.json(["REQ", @sid,
+                     *filters.map { |f| Nostr.check!(f, Filter).to_h }])
     end
 
-    def close = Nostr.json(["CLOSE", @sid])
+    def close = Operator.json(["CLOSE", @sid])
   end
 
   # Not used
