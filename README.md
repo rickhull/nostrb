@@ -76,10 +76,24 @@ array of *tags*, but let's assume not.  We are ready to sign.
 Signing time sets off a chain of dependent events.  We need something to sign,
 typically a hash of the message.  But we want to hash more than just the
 content.  We need to include pubkey, kind, tags, and also a timestamp.
-So we will serialize the event including several fields,
-hash the serialization, and sign the hash.
 
-The hash of the serialization will become the *id* of the Event.  Until
-signing time, it is incoherent to refer to the timestamp, *created_at*, of
-the Event or its *id* or digest, as both of these will only be set at
-signing time.
+1. Generate timestamp `created_at`
+2. Create serialization: `[pubkey, created_at, kind, tags, content]`
+3. Create SHA256 digest of the serialization, store as `id`
+4. Create signature `sig` by signing the digest with the secret key
+
+So we will serialize the event including several fields,
+hash the serialization, and sign the hash.  Note that the timestamp is
+fundamentally **immutable**, so until an event is signed, it is somewhat
+incoherent to refer to its timestamp, serialization, or id.  We can always
+create and examine a *provisional* timestamp, serialization, or id.  But when
+signing time comes, a new timestamp will be set, and any previous
+serialization or digest will be invalid.
+
+### Library Structure
+
+* `module Nostr`: encapsulates this library; provides utility functions
+  * `class Event`: a basic Event with no handling for `created_at`, `id`, `sig`
+  * `class SignedEvent`: upon signing, wraps an Event with
+    `created_at`, `id`, `sig`
+  * `class Source`: wraps a public key; provides methods for Event creation
