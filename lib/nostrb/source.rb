@@ -50,9 +50,10 @@ module Nostr
     #     tags: [['p', pubkey, relay_url, petname]]
     def follow_list(pubkey_hsh)
       list = event('', 3)
-      pubkey_hsh.each { |pubkey, ary|
-        Nostr.ary!(ary).each { |s| Nostr.txt!(s) }
-        list.ref_pubkey(Nostr.txt!(pubkey, 64), *ary)
+      pubkey_hsh.each { |pubkey, (url, name)|
+        list.ref_pubkey(Nostr.txt!(pubkey, 64),
+                        Nostr.txt!(url),
+                        Nostr.txt!(name))
       }
       list
     end
@@ -76,60 +77,91 @@ module Nostr
     alias_method :delete, :deletion_request
   end
 
+  class Filter
+    def initialize
+      @ids = []
+      @authors = []
+      @kinds = []
+      @tags = {}
+      @since = nil
+      @until = nil
+      @limit = nil
+    end
 
-  # ["EVENT", <event json>]
-  # ["REQ", <subscription_id>, <filters1>, <filters2>, ...]
-  # ["CLOSE", <subscription_id>]
+    def add_ids(*event_ids)
+      @ids += event_ids.each { |id| Nostr.txt!(id, 64) }
+    end
 
-  # filter:
-  #   {
-  #     "ids": <a list of event ids>,
-  #     "authors": <a list of lowercase pubkeys,
-  #                 the pubkey of an event must be one of these>,
-  #     "kinds": <a list of a kind numbers>,
-  #     "#<single-letter (a-zA-Z)>": <a list of tag values,
-  #                                   for #e — a list of event ids,
-  #                                   for #p — a list of pubkeys, etc.>,
-  #     "since": <an integer unix timestamp in seconds.
-  #               Events must have a created_at >= to this to pass>,
-  #     "until": <an integer unix timestamp in seconds.
-  #               Events must have a created_at <= to this to pass>,
-  #     "limit": <maximum number of events relays SHOULD return
-  #               in the initial query>
-  #  }
+    def add_authors(*pubkeys)
+      @authors += pubkeys.each { |pubkey| Nostr.txt!(pubkey, 64) }
+    end
 
-  # TODO: create Nostr.filter!
+    def add_kinds(*kinds)
+      @kinds += kinds.each { |k| Nostr.kind!(k) }
+    end
 
-  # op = Operator.new(subscription_id)
+    def add_tag(letter, list)
+      @tags[Nostr.txt!(letter, 1)] = Nostr.ary!(list, 99).each { |s|
+        Nostr.txt!(s)
+      }
+    end
 
-  # publish text note
-  # signed = Source.new(pk).text_note('hello').sign(sk)
-  # op.publish(signed) => ["EVENT", signed.to_json]
+    def since=(int)
+      @since = Nostr.int!(int)
+    end
 
-  # subscribe to an event
-  # filter = { ids: [eid] }
-  # op.subscribe(filter)
-  # subscribe to an author
+    def until=(int)
+      @until = Nostr.int!(int)
+    end
 
-  # subscribe to profile changes in the last 5 minutes
+    def limit=(int)
+      @limit = Nostr.int!(int)
+    end
+
+    def to_h
+      h = Hash.new
+      h["ids"] = @ids if !@ids.empty?
+      h["authors"] = @authors if !@authors.empty?
+      h["kinds"] = @kinds if !@kinds.empty?
+      @tags.each { |letter, ary|
+        h['#' + letter.to_s] = ary if !ary.empty?
+      }
+      h["since"] = @since unless @since.nil?
+      h["until"] = @until unless @until.nil?
+      h["limit"] = @limit unless @limit.nil?
+      h
+    end
+  end
 
   class Operator
+    def self.sid = SchnorrSig.bin2hex Random.bytes(32)
+
+    def self.generate = new(self.sid)
+
     def initialize(subscription_id)
       @sid = Nostr.txt!(subscription_id)
       raise "too long" if @sid.length > 64
     end
 
-    def publish(signed)
-      Nostr.json(["EVENT", signed.to_json])
-    end
+    def publish(signed) = Nostr.json(["EVENT", signed.to_json])
 
     def subscribe(*filters)
-      # TODO: Nostr.filter!
-      Nostr.json(["REQ", @sid, *filters.each { |f| Nostr.json(f) }])
+      Nostr.json(["REQ", @sid, *filters.each { |f|
+                    Nostr.json(Nostr.check!(f, Filter).to_h)
+                  }])
     end
 
-    def close
-      Nostr.json(["CLOSE", @sid])
+    def close = Nostr.json(["CLOSE", @sid])
+  end
+
+  # Not used
+  class Contact
+    attr_reader :name, :pubkey, :relays
+
+    def initialize(name, pubkey, *relay_urls)
+      @name = Nostr.txt!(name)
+      @pubkey = Nostr.txt!(pubkey, 64)
+      @relays = relay_urls.each { |u| Nostr.txt!(u) }
     end
   end
 end
