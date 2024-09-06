@@ -1,8 +1,9 @@
 require 'nostrb'
 
 # Kind:
-#   0: replaceable -- relay stores only the last message from pubkey
-#   1,2,4..44,1000..9999: regular -- relay stores all
+#   0,3: replaceable -- relay stores only the last message from pubkey
+#   2: deprecated
+#   1,4..44,1000..9999: regular -- relay stores all
 #   10_000..19_999: replaceable -- relay stores latest(pubkey, kind)
 #   20_000..29_999: ephemeral -- relay doesn't store
 #   30_000..39_999: parameterized replaceable -- latest(pubkey, kind, dtag)
