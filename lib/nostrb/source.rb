@@ -120,8 +120,43 @@ module Nostr
   Seconds.extend(Seconds)
 
   class Filter
+    TAG = /\A#([a-zA-Z])\z/
+
     def self.ago(hsh)
       Time.now.to_i - Seconds.process(hsh)
+    end
+
+    def self.ingest(hash)
+      f = Filter.new
+
+      if ids = hash.delete("ids")
+        f.add_ids(*ids)
+      end
+      if authors = hash.delete("authors")
+        f.add_authors(*authors)
+      end
+      if kinds = hash.delete("kinds")
+        f.add_kinds(*kinds)
+      end
+      if since = hash.delete("since")
+        f.since = since
+      end
+      if _until = hash.delete("until")
+        f.until = _until
+      end
+      if limit = hash.delete("limit")
+        f.limit = limit
+      end
+
+      # anything left in hash should only be single letter tags
+      hash.each { |tag, ary|
+        if matches = tag.match(TAG)
+          f.add_tag(matches[1], ary)
+        else
+          warn "unmatched tag: #{tag}"
+        end
+      }
+      f
     end
 
     attr_reader :ids, :authors, :kinds, :tags, :limit
@@ -165,6 +200,31 @@ module Nostr
 
     def limit=(int)
       @limit = int.nil? ? nil : Nostr.int!(int)
+    end
+
+    # Input
+    #   Ruby hash as returned from SignedEvent.ingest
+    def match?(e_hash)
+      return false if !@ids.empty? and !@ids.include?(e_hash[:id])
+      return false if !@authors.empty? and !@authors.include?(e_hash[:pubkey])
+      return false if !@kinds.empty? and !@kinds.include?(e_hash[:kind])
+      return false if @since and @since > e_hash[:created_at]
+      return false if @until and @until < e_hash[:created_at]
+      if !@tags.empty?
+        tags = e_hash[:tags]
+        @tags.each { |letter, ary|
+          tag_match = false
+          tags.each { |(tag, val)|
+            next if tag_match
+            if tag == letter
+              return false if !ary.include?(val)
+              tag_match = true
+            end
+          }
+          return false unless tag_match
+        }
+      end
+      true
     end
 
     def to_h
