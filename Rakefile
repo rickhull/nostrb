@@ -5,11 +5,11 @@ Rake::TestTask.new :test do |t|
   t.warning = true
 end
 
-task :examples do |t|
-  sh "ruby examples/simpsons.rb"
+task :relay do |t|
+  sh "ruby examples/relay.rb"
 end
 
-task default: [:test, :examples]
+task default: [:test, :relay]
 
 begin
   require 'buildar'
