@@ -13,9 +13,16 @@ def signed_note(content = '')
   SignedEvent.new(text_note(content), $sk)
 end
 
-# different keys than generated / used above
-$json = %q[{"content":"hello world","pubkey":"18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d","kind":1,"tags":[],"created_at":1725496781,"id":"7f6f1c7ee406a450b581c62754fa66ffaaff0504b40ced02a6d0fc3806f1d44b","sig":"8bb25f403e90cbe83629098264327b56240a703820b26f440a348ae81a64ec490c18e61d2942fe300f26b93a1534a94406aec12f5a32272357263bea88fccfda"}]
-$hash = {
+$parsed = {
+  "content" => "hello world",
+  "pubkey" => "18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
+  "kind" => 1,
+  "tags" => [],
+  "created_at" => 1725496781,
+  "id" => "7f6f1c7ee406a450b581c62754fa66ffaaff0504b40ced02a6d0fc3806f1d44b",
+  "sig" => "8bb25f403e90cbe83629098264327b56240a703820b26f440a348ae81a64ec490c18e61d2942fe300f26b93a1534a94406aec12f5a32272357263bea88fccfda"
+}
+$ingested = {
   :content=>"hello world",
   :pubkey=>"18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
   :kind=>1,
@@ -28,13 +35,13 @@ $hash = {
 describe Event do
   describe "class functions" do
     it "serializes a Ruby hash representing a SignedEvent to a Ruby array" do
-      a = Event.serialize($hash)
+      a = Event.serialize($ingested)
       expect(a).must_be_kind_of Array
       expect(a.length).must_equal 6
     end
 
     it "computes a 32 byte digest of a JSON serialization" do
-      a = Event.serialize($hash)
+      a = Event.serialize($ingested)
       d = Event.digest(a)
       expect(d).must_be_kind_of String
       expect(d.length).must_equal 32
@@ -42,9 +49,9 @@ describe Event do
     end
 
     it "also accepts a hash, which it will serialize" do
-      a = Event.serialize($hash)
+      a = Event.serialize($ingested)
       d = Event.digest(a)
-      d2 = Event.digest($hash)
+      d2 = Event.digest($ingested)
       expect(d2).must_equal d
     end
   end
@@ -152,20 +159,20 @@ end
 
 describe SignedEvent do
   describe "class functions" do
-    it "validates a JSON string and returns a ruby hash" do
-      h = SignedEvent.hash($json)
+    it "ingests a JSON parsed hash" do
+      h = SignedEvent.ingest $parsed
       expect(h).must_be_kind_of Hash
       [:id, :pubkey, :kind, :content, :tags, :created_at, :sig].each { |sym|
         expect(h.key?(sym)).must_equal true
       }
-
-      expect { SignedEvent.hash('hello world') }.must_raise JSON::ParserError
-      expect { SignedEvent.hash('{}') }.must_raise KeyError
+      expect(h).must_equal $ingested
     end
 
-    it "verifies the signature and validates the id of a JSON event string" do
-      h = SignedEvent.verify($json)
+    it "verifies a JSON parsed hash or an ingested hash" do
+      h = SignedEvent.verify($ingested)
       expect(h).must_be_kind_of Hash
+      j = SignedEvent.verify($parsed)
+      expect(j).must_equal h
     end
   end
 

@@ -92,20 +92,16 @@ module Nostr
     class IdCheck < Error; end
     class SignatureCheck < Error; end
 
-    # Deconstruct and typecheck, return a ruby hash
-    # This should correspond directly to SignedEvent#to_h
-    # May raise explicitly: KeyError on Hash#fetch
-    # May raise implicitly: Nostr::SizeError, EncodingError, TypeError
-    def self.hash(json_str)
-      h = Nostr.parse(json_str)
-      Nostr.check!(h, Hash)
-      Hash[ content:    Nostr.txt!(h.fetch("content")),
-            pubkey:  Nostr.pubkey!(h.fetch("pubkey")),
-            kind:      Nostr.kind!(h.fetch("kind")),
-            tags:      Nostr.tags!(h.fetch("tags")),
-            created_at: Nostr.int!(h.fetch("created_at")),
-            id:          Nostr.id!(h.fetch("id")),
-            sig:        Nostr.sig!(h.fetch("sig")), ]
+    # convert string keys to symbols in a strict way
+    def self.ingest(hash)
+      return hash if hash[:sig]
+      Hash[ content:    Nostr.txt!(hash.fetch("content")),
+            pubkey:  Nostr.pubkey!(hash.fetch("pubkey")),
+            kind:      Nostr.kind!(hash.fetch("kind")),
+            tags:      Nostr.tags!(hash.fetch("tags")),
+            created_at: Nostr.int!(hash.fetch("created_at")),
+            id:          Nostr.id!(hash.fetch("id")),
+            sig:        Nostr.sig!(hash.fetch("sig")), ]
     end
 
     # Validate the id (optional) and signature
@@ -113,14 +109,13 @@ module Nostr
     # May raise implicitly: Nostr::SizeError, EncodingError, TypeError,
     #                       SchnorrSig::Error
     # Return a _completely validated_ hash
-    def self.verify(json_str, check_id: true)
-      # validate the json string; we know we have a valid hash now
-      h = self.hash(json_str)
+    def self.verify(hash, check_id: true)
+      h = ingest(hash)
 
       # extract binary values for signature verification
-      digest = SchnorrSig.hex2bin(h[:id])
-      pk = SchnorrSig.hex2bin(h[:pubkey])
-      signature = SchnorrSig.hex2bin(h[:sig])
+      digest = SchnorrSig.hex2bin h.fetch(:id)
+      pk = SchnorrSig.hex2bin h.fetch(:pubkey)
+      signature = SchnorrSig.hex2bin h.fetch(:sig)
 
       # verify the signature
       unless SchnorrSig.verify?(pk, digest, signature)
