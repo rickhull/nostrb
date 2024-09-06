@@ -18,10 +18,7 @@ module Nostr
     #   kind: 0..65535
     #   tags: Array[Array[string]]
 
-    # return 32 bytes binary, the digest of a JSON array
-    def self.digest(ary)
-      Nostr.digest(Nostr.json(Nostr.ary!(ary)))
-    end
+    def self.digest(ary) = Nostr.digest(Nostr.json(Nostr.ary!(ary)))
 
     attr_reader :content, :pk, :kind, :tags
 
@@ -80,7 +77,6 @@ module Nostr
     class IdCheck < Error; end
     class SignatureCheck < Error; end
 
-    # validate parsed json
     def self.validate!(parsed)
       Nostr.check!(parsed, Hash)
       Nostr.txt!(parsed.fetch("content"))
@@ -93,18 +89,8 @@ module Nostr
       parsed
     end
 
-    # Input
-    #   valid - validated Hash, per SignedEvent.validate!
-    # Output
-    #   32 bytes binary (SHA256 hash)
-    def self.digest(valid)
-      Nostr.digest(Nostr.json(serialize(valid)))
-    end
+    def self.digest(valid) = Nostr.digest(Nostr.json(serialize(valid)))
 
-    # Input
-    #   valid - validated Hash, per SignedEvent.validate!
-    # Output
-    #   Array length 6
     def self.serialize(valid)
       Array[ 0,
              valid["pubkey"],
