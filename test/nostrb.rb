@@ -22,8 +22,8 @@ describe Nostr do
         hex = "0123456789abcdef"
 
         expect(Nostr.txt!(hex)).must_equal hex
-        expect(Nostr.txt!(hex, 16)).must_equal hex
-        expect { Nostr.txt!(hex, 8) }.must_raise Nostr::SizeError
+        expect(Nostr.txt!(hex, length: 16)).must_equal hex
+        expect { Nostr.txt!(hex, length: 8) }.must_raise Nostr::SizeError
         expect { Nostr.txt!("0123".b) }.must_raise EncodingError
       end
 

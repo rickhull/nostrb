@@ -39,9 +39,9 @@ module Nostr
 
     def initialize(content = '', pk:, kind: 1, tags: [])
       @content = Nostr.txt!(content)
-      @pk = Nostr.bin!(pk, 32)
-      @kind = Nostr.kind!(kind)
-      @tags = Nostr.tags!(tags)
+      @pk      = Nostr.key!(pk)
+      @kind    = Nostr.kind!(kind)
+      @tags    = Nostr.tags!(tags)
     end
 
     alias_method :to_s, :content
@@ -67,17 +67,17 @@ module Nostr
 
     # add an event tag based on event id, hex encoded
     def ref_event(eid_hex, *rest)
-      add_tag('e', Nostr.txt!(eid_hex, 64), *rest)
+      add_tag('e', Nostr.hexkey!(eid_hex), *rest)
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
     def ref_pubkey(pubkey, *rest)
-      add_tag('p', Nostr.txt!(pubkey, 64), *rest)
+      add_tag('p', Nostr.hexkey!(pubkey), *rest)
     end
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.kind!(kind), Nostr.txt!(pubkey, 64), d_tag].join(':')
+      val = [Nostr.kind!(kind), Nostr.hexkey!(pubkey), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end
@@ -100,12 +100,12 @@ module Nostr
       h = Nostr.parse(json_str)
       Nostr.check!(h, Hash)
       Hash[ content:    Nostr.txt!(h.fetch("content")),
-            pubkey:     Nostr.txt!(h.fetch("pubkey"), 64),
+            pubkey:  Nostr.hexkey!(h.fetch("pubkey")),
             kind:      Nostr.kind!(h.fetch("kind")),
             tags:      Nostr.tags!(h.fetch("tags")),
             created_at: Nostr.int!(h.fetch("created_at")),
-            id:         Nostr.txt!(h.fetch("id"), 64),
-            sig:        Nostr.txt!(h.fetch("sig"), 128) ]
+            id:         Nostr.txt!(h.fetch("id"), length: 64),
+            sig:        Nostr.txt!(h.fetch("sig"), length: 128) ]
     end
 
     # Validate the id (optional) and signature
@@ -138,7 +138,7 @@ module Nostr
       @event = Nostr.check!(event, Event)
       @created_at = Time.now.to_i
       @digest = @event.digest(@created_at)
-      @signature = SchnorrSig.sign(Nostr.bin!(sk, 32), @digest)
+      @signature = SchnorrSig.sign(Nostr.key!(sk), @digest)
     end
 
     def to_s = @event.to_s

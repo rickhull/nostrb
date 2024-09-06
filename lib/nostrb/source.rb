@@ -9,8 +9,10 @@ module Nostr
   class Source
     # add a 4th layer of nesting for the array wrapper
     JSON_OPTIONS = Nostr::JSON_OPTIONS.merge(max_nesting: 4)
-
     def self.json(array) = JSON.generate(Nostr.ary!(array), **JSON_OPTIONS)
+
+    #######################
+    # Client Requests
 
     def self.publish(signed) = json(["EVENT", signed.to_h])
 
@@ -21,6 +23,9 @@ module Nostr
 
     def self.close(sid) = json(["CLOSE", Nostr.txt!(sid, max: 64)])
 
+    #######################
+    # Utils
+
     def self.random_sid
       SchnorrSig.bin2hex Random.bytes(32)
     end
@@ -28,17 +33,19 @@ module Nostr
     attr_reader :pk
 
     def initialize(pk)
-      @pk = Nostr.bin!(pk, 32)
+      @pk = Nostr.key!(pk)
     end
 
     def pubkey = SchnorrSig.bin2hex(@pk)
 
-    def event(content, kind)
-      Event.new(content, kind: kind, pk: @pk)
-    end
+    ############################
+    # Event Creation
 
     #           NIP-01
-    def text_note(content) = event(content, 1)
+    def event(content, kind = 1)
+      Event.new(content, kind: kind, pk: @pk)
+    end
+    alias_method :text_note, :event
 
     #           NIP-01
     # Input
@@ -69,7 +76,7 @@ module Nostr
     def follow_list(pubkey_hsh)
       list = event('', 3)
       pubkey_hsh.each { |pubkey, (url, name)|
-        list.ref_pubkey(Nostr.txt!(pubkey, 64),
+        list.ref_pubkey(Nostr.hexkey!(pubkey),
                         Nostr.txt!(url),
                         Nostr.txt!(name))
       }
@@ -133,11 +140,11 @@ module Nostr
     end
 
     def add_ids(*event_ids)
-      @ids += event_ids.each { |id| Nostr.txt!(id, 64) }
+      @ids += event_ids.each { |id| Nostr.txt!(id, length: 64) }
     end
 
     def add_authors(*pubkeys)
-      @authors += pubkeys.each { |pubkey| Nostr.txt!(pubkey, 64) }
+      @authors += pubkeys.each { |pubkey| Nostr.hexkey!(pubkey) }
     end
 
     def add_kinds(*kinds)
@@ -145,9 +152,8 @@ module Nostr
     end
 
     def add_tag(letter, list)
-      @tags[Nostr.txt!(letter, 1)] = Nostr.ary!(list, 99).each { |s|
-        Nostr.txt!(s)
-      }
+      @tags[Nostr.txt!(letter, length: 1)] =
+        Nostr.ary!(list, max: 99).each { |s| Nostr.txt!(s) }
     end
 
     def since(hsh = nil) = hsh.nil? ? @since : (@since = Filter.ago(hsh))

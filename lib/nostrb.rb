@@ -13,17 +13,17 @@ module Nostr
     val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
   end
 
-  def self.int!(int, max = nil)
+  def self.int!(int, max: nil)
     check!(int, Integer)
     raise(SizeError, "#{int} > #{max} (max)") if !max.nil? and int > max
     int
   end
 
   def self.kind!(kind)
-    int!(kind, 65535)
+    int!(kind, max: 65535)
   end
 
-  def self.ary!(ary, max = nil)
+  def self.ary!(ary, max: nil)
     check!(ary, Array)
     if !max.nil? and ary.length > max
       raise(SizeError, "#{ary.length} > #{max} (max)")
@@ -41,16 +41,24 @@ module Nostr
     str
   end
 
-  def self.bin!(str, length = nil, max: nil)
+  def self.bin!(str, length: nil, max: nil)
     str!(str, binary: true, length: length, max: max)
   end
 
-  def self.txt!(str, length = nil, max: nil)
+  def self.key!(str)
+    bin!(str, length: 32)
+  end
+
+  def self.txt!(str, length: nil, max: nil)
     str!(str, binary: false, length: length, max: max)
   end
 
+  def self.hexkey!(str)
+    txt!(str, length: 64)
+  end
+
   def self.tags!(ary)
-    ary!(ary, 9999).each { |a| ary!(a, 99).each { |s| Nostr.txt!(s) } }
+    ary!(ary, max: 9999).each { |a| ary!(a, max: 99).each { |s| txt!(s) } }
   end
 
   #####################################
