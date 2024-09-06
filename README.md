@@ -52,8 +52,8 @@ hello = client.text_note('hello world')
 # sign it with the secret key
 signed = hello.sign(sk)
 
-# dump the signed event in wire format
-signed.to_json # => long JSON string
+# create a request to publish
+msg = Source.publish(signed)  # => '["EVENT", {...}]'
 ```
 
 ## Fundamentals
