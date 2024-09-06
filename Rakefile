@@ -6,7 +6,7 @@ Rake::TestTask.new :test do |t|
 end
 
 task :relay do |t|
-  sh "ruby examples/relay.rb"
+  sh "ruby -I lib examples/relay.rb"
 end
 
 task default: [:test, :relay]
