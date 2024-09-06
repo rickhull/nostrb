@@ -32,13 +32,6 @@ describe Event do
       expect(d.length).must_equal 32
       expect(d.encoding).must_equal Encoding::BINARY
     end
-
-    it "also accepts a hash, which it will serialize" do
-      a = SignedEvent.serialize($parsed)
-      d = Event.digest(a)
-      d2 = Event.digest($parsed)
-      expect(d2).must_equal d
-    end
   end
 
   describe "initialization" do
@@ -161,6 +154,13 @@ describe SignedEvent do
       a = SignedEvent.serialize($parsed)
       expect(a).must_be_kind_of Array
       expect(a.length).must_equal 6
+    end
+
+    it "digests a hash JSON parsed hash, which it will serialize" do
+      a = SignedEvent.serialize($parsed)
+      d = Event.digest(a)
+      d2 = SignedEvent.digest($parsed)
+      expect(d2).must_equal d
     end
   end
 

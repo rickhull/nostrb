@@ -20,8 +20,7 @@ module Nostr
 
     # return 32 bytes binary, the digest of a JSON array
     def self.digest(ary)
-      ary = ary.is_a?(Hash) ? SignedEvent.serialize(ary) : ary
-      Nostr.digest(Nostr.json(ary))
+      Nostr.digest(Nostr.json(Nostr.ary!(ary)))
     end
 
     attr_reader :content, :pk, :kind, :tags
@@ -81,19 +80,6 @@ module Nostr
     class IdCheck < Error; end
     class SignatureCheck < Error; end
 
-    # Convert Hash[symbol => val] to Array[val]
-    # This should correspond directly to Event#serialize
-    # May raise KeyError on Hash#fetch
-    def self.serialize(parsed)
-      hash = validate!(parsed)
-      Array[ 0,
-             hash["pubkey"],
-             hash["created_at"],
-             hash["kind"],
-             hash["tags"],
-             hash["content"], ]
-    end
-
     # validate parsed json
     def self.validate!(parsed)
       Nostr.check!(parsed, Hash)
@@ -105,6 +91,27 @@ module Nostr
       Nostr.id!(parsed.fetch("id"))
       Nostr.sig!(parsed.fetch("sig"))
       parsed
+    end
+
+    # Input
+    #   valid - validated Hash, per SignedEvent.validate!
+    # Output
+    #   32 bytes binary (SHA256 hash)
+    def self.digest(valid)
+      Nostr.digest(Nostr.json(serialize(valid)))
+    end
+
+    # Input
+    #   valid - validated Hash, per SignedEvent.validate!
+    # Output
+    #   Array length 6
+    def self.serialize(valid)
+      Array[ 0,
+             valid["pubkey"],
+             valid["created_at"],
+             valid["kind"],
+             valid["tags"],
+             valid["content"], ]
     end
 
     # Validate the id (optional) and signature
@@ -127,7 +134,7 @@ module Nostr
         raise(SignatureCheck, sig)
       end
       # (optional) verify the id / digest
-      raise(IdCheck, id) if check_id and digest != Event.digest(hash)
+      raise(IdCheck, id) if check_id and digest != SignedEvent.digest(hash)
       hash
     end
 
