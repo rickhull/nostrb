@@ -1,4 +1,5 @@
 require 'nostrb/source'
+require 'nostrb/relay'
 
 # Homer follows Marge
 # Marge follows Bart, Lisa, Maggie
@@ -8,10 +9,6 @@ require 'nostrb/source'
 
 include Nostr
 
-pubkeys = {}   # pubkey => [relay_url, name]
-simpsons = {}  # name => Source.new(pk)
-keys = {}      # name => [sk, pk]
-secrets = {}   # name => sk
 context = {}
 
 ['homer', 'marge', 'bart', 'lisa', 'maggie'].each { |name|
@@ -26,23 +23,7 @@ context = {}
 homer, marge = context['homer'], context['marge']
 bart, lisa, maggie = context['bart'], context['lisa'], context['maggie']
 
-puts "Homer follows Marge"
-hsh = { marge[:pubkey] => [marge[:relay_url], 'marge'] }
-homer_follows = homer[:source].follow_list(hsh).sign(homer[:sk])
-puts Source.publish(homer_follows)
-puts
-
-puts "Marge follows Bart, Lisa, Maggie"
-hsh = {}
-['bart', 'lisa', 'maggie'].each { |name|
-  ctx = context[name]
-  hsh[ctx[:pubkey]] = [ctx[:relay_url], name]
-}
-marge_follows = marge[:source].follow_list(hsh).sign(marge[:sk])
-puts Source.publish(marge_follows)
-puts
-
-# TODO: finish from here
+relay = Server.new
 
 puts "Bart uploads his profile"
 hsh = {
@@ -52,51 +33,150 @@ hsh = {
   'Bart_Simpson_200px.png',
 }
 bart_profile = bart[:source].user_metadata(**hsh).sign(bart[:sk])
-puts Source.publish(bart_profile)
+json = Nostr.json Source.publish(bart_profile)
+puts json
 puts
 
-puts "Lisa follows Homer, Marge, Bart, Maggie"
-hsh = {}
-['homer', 'marge', 'bart', 'maggie'].each { |name|
-  ctx = context[name]
-  hsh[ctx[:pubkey]] = [ctx[:relay_url], name]
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+puts "Marge requests recent profiles"
+f = Filter.new
+f.add_kinds(0)
+f.since(minutes: 30)
+json = Nostr.json Source.subscribe(marge[:pubkey], f)
+puts json
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+# Now Marge has bart's pubkey
+
+puts "Marge follows Bart"
+hsh = { bart[:pubkey] => ["", 'bart'] }
+marge_follows = marge[:source].follow_list(hsh).sign(marge[:sk])
+json = Nostr.json Source.publish(marge_follows)
+puts json
+puts
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+puts "Marge uploads her profile"
+hsh = {
+  name: 'Marge',
+  about: 'Mama Simpson',
+  picture: '',
 }
-lisa_follows = lisa[:source].follow_list(hsh).sign(lisa[:sk])
-puts Source.publish(lisa_follows)
+marge_profile = marge[:source].user_metadata(**hsh).sign(marge[:sk])
+json = Nostr.json Source.publish(marge_profile)
+puts json
 puts
 
-puts "Maggie follows Marge"
-hsh = { marge[:pubkey] => [marge[:relay_url], 'marge'] }
-maggie_follows = maggie[:source].follow_list(hsh).sign(maggie[:sk])
-puts Source.publish(maggie_follows)
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
 puts
 
-puts "Homer gets Marge's follows"
+puts "Homer requests recent profiles"
+f = Filter.new
+f.add_kinds(0)
+f.since(minutes: 30)
+json = Nostr.json Source.subscribe(homer[:pubkey], f)
+puts json
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+# Now Homer has Marge's and Bart's pubkeys
+
+puts "Homer follows Marge"
+hsh = { marge[:pubkey] => ['', 'marge'] }
+homer_follows = homer[:source].follow_list(hsh).sign(homer[:sk])
+json = Nostr.json Source.publish(homer_follows)
+puts json
+puts
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+puts "Lisa uploads her profile"
+hsh = {
+  name: 'Lisa',
+  about: 'Concise yet adventurous',
+  picture: '',
+}
+lisa_profile = lisa[:source].user_metadata(**hsh).sign(lisa[:sk])
+json = Nostr.json Source.publish(lisa_profile)
+puts json
+puts
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+puts "Maggie uploads her profile"
+hsh = {
+  name: 'Maggie',
+  about: 'Ga ga goo ga (squeal)',
+  picture: '',
+}
+maggie_profile = maggie[:source].user_metadata(**hsh).sign(maggie[:sk])
+json = Nostr.json Source.publish(maggie_profile)
+puts json
+puts
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+
+puts "Marge requests recent profiles"
+f = Filter.new
+f.add_kinds(0)
+f.since(minutes: 30)
+json = Nostr.json Source.subscribe(marge[:pubkey], f)
+puts json
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+# now Marge has Lisa and Maggie pubkeys
+
+puts "Marge follows Bart, Lisa, Maggie"
+hsh = {
+  lisa[:pubkey] => ['', 'lisa'],
+  maggie[:pubkey] => ['', 'maggie'],
+}
+marge_follows = marge[:source].follow_list(hsh).sign(marge[:sk])
+json = Nostr.json Source.publish(marge_follows)
+puts json
+puts
+
+puts "Relay response:"
+relay.ingest(json).each { |r| puts r }
+puts
+
+puts "Homer requests Marge's follows"
 f = Filter.new
 f.add_authors(marge[:pubkey])
 f.add_kinds(3)
-f.since = Time.now.to_i - Seconds.days(30)
-puts Source.subscribe(homer[:pubkey], f)
+f.since(days: 30)
+json = Nostr.json Source.subscribe(homer[:pubkey], f)
+puts json
 puts
 
-puts Source.publish(marge_follows)
+puts "Relay response"
+relay.ingest(json).each { |r| puts r }
 puts
 
-# homer's contact list
+# homer's updated contact list
 # marge_pk => marge
 # bart_pk => marge.bart
 # lisa_pk => marge.lisa
 # maggie_pk => marge.maggie
-
-puts "Homer gets Lisa's follows"
-f = Filter.new
-f.add_authors(lisa[:pubkey])
-f.add_kinds(3)
-f.since = Time.now.to_i - Seconds.days(30)
-puts Source.subscribe(homer[:pubkey], f)
-puts
-
-puts Source.publish(lisa_follows)
-puts
-
-# now homer has: bart_pk => marge.lisa.bart
