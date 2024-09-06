@@ -18,21 +18,10 @@ module Nostr
     #   kind: 0..65535
     #   tags: Array[Array[string]]
 
-    # Convert Hash[symbol => val] to Array[val]
-    # This should correspond directly to Event#serialize
-    # May raise KeyError on Hash#fetch
-    def self.serialize(hash)
-      Array[ 0,
-             hash.fetch(:pubkey),
-             hash.fetch(:created_at),
-             hash.fetch(:kind),
-             hash.fetch(:tags),
-             hash.fetch(:content) ]
-    end
-
     # return 32 bytes binary, the digest of a JSON array
     def self.digest(ary)
-      Nostr.digest(Nostr.json(ary.is_a?(Hash) ? serialize(ary) : ary))
+      ary = ary.is_a?(Hash) ? SignedEvent.serialize(ary) : ary
+      Nostr.digest(Nostr.json(ary))
     end
 
     attr_reader :content, :pk, :kind, :tags
@@ -92,16 +81,30 @@ module Nostr
     class IdCheck < Error; end
     class SignatureCheck < Error; end
 
-    # convert string keys to symbols in a strict way
-    def self.ingest(hash)
-      return hash if hash[:sig]
-      Hash[ content:    Nostr.txt!(hash.fetch("content")),
-            pubkey:  Nostr.pubkey!(hash.fetch("pubkey")),
-            kind:      Nostr.kind!(hash.fetch("kind")),
-            tags:      Nostr.tags!(hash.fetch("tags")),
-            created_at: Nostr.int!(hash.fetch("created_at")),
-            id:          Nostr.id!(hash.fetch("id")),
-            sig:        Nostr.sig!(hash.fetch("sig")), ]
+    # Convert Hash[symbol => val] to Array[val]
+    # This should correspond directly to Event#serialize
+    # May raise KeyError on Hash#fetch
+    def self.serialize(parsed)
+      hash = validate!(parsed)
+      Array[ 0,
+             hash["pubkey"],
+             hash["created_at"],
+             hash["kind"],
+             hash["tags"],
+             hash["content"], ]
+    end
+
+    # validate parsed json
+    def self.validate!(parsed)
+      Nostr.check!(parsed, Hash)
+      Nostr.txt!(parsed.fetch("content"))
+      Nostr.pubkey!(parsed.fetch("pubkey"))
+      Nostr.kind!(parsed.fetch("kind"))
+      Nostr.tags!(parsed.fetch("tags"))
+      Nostr.int!(parsed.fetch("created_at"))
+      Nostr.id!(parsed.fetch("id"))
+      Nostr.sig!(parsed.fetch("sig"))
+      parsed
     end
 
     # Validate the id (optional) and signature
@@ -109,21 +112,23 @@ module Nostr
     # May raise implicitly: Nostr::SizeError, EncodingError, TypeError,
     #                       SchnorrSig::Error
     # Return a _completely validated_ hash
-    def self.verify(hash, check_id: true)
-      h = ingest(hash)
+    def self.verify(parsed, check_id: true)
+      hash = validate!(parsed)
+
+      id, pubkey, sig = hash["id"], hash["pubkey"], hash["sig"]
 
       # extract binary values for signature verification
-      digest = SchnorrSig.hex2bin h.fetch(:id)
-      pk = SchnorrSig.hex2bin h.fetch(:pubkey)
-      signature = SchnorrSig.hex2bin h.fetch(:sig)
+      digest = SchnorrSig.hex2bin id
+      pk = SchnorrSig.hex2bin pubkey
+      signature = SchnorrSig.hex2bin sig
 
       # verify the signature
       unless SchnorrSig.verify?(pk, digest, signature)
-        raise(SignatureCheck, h[:sig])
+        raise(SignatureCheck, sig)
       end
       # (optional) verify the id / digest
-      raise(IdCheck, h[:id]) if check_id and digest != Event.digest(h)
-      h
+      raise(IdCheck, id) if check_id and digest != Event.digest(hash)
+      hash
     end
 
     attr_reader :event, :created_at, :digest, :signature
@@ -149,8 +154,5 @@ module Nostr
             id: self.id,
             sig: self.sig ]
     end
-
-    # this isn't used internally
-    # def to_json = Nostr.json(self.to_h)
   end
 end
