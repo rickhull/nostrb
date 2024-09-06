@@ -67,17 +67,17 @@ module Nostr
 
     # add an event tag based on event id, hex encoded
     def ref_event(eid_hex, *rest)
-      add_tag('e', Nostr.hexkey!(eid_hex), *rest)
+      add_tag('e', Nostr.id!(eid_hex), *rest)
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
     def ref_pubkey(pubkey, *rest)
-      add_tag('p', Nostr.hexkey!(pubkey), *rest)
+      add_tag('p', Nostr.pubkey!(pubkey), *rest)
     end
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.kind!(kind), Nostr.hexkey!(pubkey), d_tag].join(':')
+      val = [Nostr.kind!(kind), Nostr.pubkey!(pubkey), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end
@@ -100,12 +100,12 @@ module Nostr
       h = Nostr.parse(json_str)
       Nostr.check!(h, Hash)
       Hash[ content:    Nostr.txt!(h.fetch("content")),
-            pubkey:  Nostr.hexkey!(h.fetch("pubkey")),
+            pubkey:  Nostr.pubkey!(h.fetch("pubkey")),
             kind:      Nostr.kind!(h.fetch("kind")),
             tags:      Nostr.tags!(h.fetch("tags")),
             created_at: Nostr.int!(h.fetch("created_at")),
-            id:         Nostr.txt!(h.fetch("id"), length: 64),
-            sig:        Nostr.txt!(h.fetch("sig"), length: 128) ]
+            id:          Nostr.id!(h.fetch("id")),
+            sig:        Nostr.sig!(h.fetch("sig")), ]
     end
 
     # Validate the id (optional) and signature
@@ -155,6 +155,7 @@ module Nostr
             sig: self.sig ]
     end
 
-    def to_json = Nostr.json(self.to_h)
+    # this isn't used internally
+    # def to_json = Nostr.json(self.to_h)
   end
 end

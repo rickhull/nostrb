@@ -5,6 +5,7 @@ require 'digest'
 module Nostr
   class Error < RuntimeError; end
   class SizeError < Error; end
+  class FormatError < Error; end
 
   #######################################
   # Type Checking and Enforcement
@@ -44,17 +45,22 @@ module Nostr
   def self.bin!(str, length: nil, max: nil)
     str!(str, binary: true, length: length, max: max)
   end
+  def self.key!(str) = bin!(str, length: 32)
 
-  def self.key!(str)
-    bin!(str, length: 32)
-  end
 
   def self.txt!(str, length: nil, max: nil)
     str!(str, binary: false, length: length, max: max)
   end
+  def self.pubkey!(str) = txt!(str, length: 64)
+  def self.id!(str) = txt!(str, length: 64)
+  def self.sid!(str) = txt!(str, max: 64)
+  def self.sig!(str) = txt!(str, length: 128)
 
-  def self.hexkey!(str)
-    txt!(str, length: 64)
+  HELP_MSG = /\A[a-zA-Z\-]+: [a-zA-Z0-9].+\z/
+
+  def self.help!(str)
+    raise(FormatError, str) unless txt!(str, max: 1024).match HELP_MSG
+    str
   end
 
   def self.tags!(ary)
@@ -67,7 +73,9 @@ module Nostr
   # per NIP-01
   JSON_OPTIONS = {
     allow_nan: false,
-    max_nesting: 3,
+    # note, while events only nest 3 deep, the wire format is 4 deep
+    # max_nesting: 3,
+    max_nesting: 4,
     script_safe: false,
     ascii_only: false,
     array_nl: '',

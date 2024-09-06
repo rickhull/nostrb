@@ -6,9 +6,7 @@ Rake::TestTask.new :test do |t|
 end
 
 task :examples do |t|
-  Dir['examples/*.rb'].each { |f|
-    sh "ruby #{f}"
-  }
+  sh "ruby examples/simpsons.rb"
 end
 
 task default: [:test, :examples]

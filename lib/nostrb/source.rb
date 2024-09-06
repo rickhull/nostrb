@@ -7,24 +7,21 @@ module Nostr
   #
 
   class Source
-    # add a 4th layer of nesting for the array wrapper
-    JSON_OPTIONS = Nostr::JSON_OPTIONS.merge(max_nesting: 4)
-    def self.json(array) = JSON.generate(Nostr.ary!(array), **JSON_OPTIONS)
-
     #######################
     # Client Requests
 
-    def self.publish(signed) = json(["EVENT", signed.to_h])
+    def self.publish(signed) = ["EVENT", signed.to_h]
 
     def self.subscribe(sid, *filters)
-      json(["REQ", Nostr.txt!(sid, max: 64),
-            *filters.map { |f| Nostr.check!(f, Filter).to_h }])
+      ["REQ", Nostr.sid!(sid), *filters.map { |f|
+         Nostr.check!(f, Filter).to_h
+      }]
     end
 
-    def self.close(sid) = json(["CLOSE", Nostr.txt!(sid, max: 64)])
+    def self.close(sid) = ["CLOSE", Nostr.sid!(sid)]
 
     #######################
-    # Utils
+    # Utils / Init
 
     def self.random_sid
       SchnorrSig.bin2hex Random.bytes(32)
@@ -76,7 +73,7 @@ module Nostr
     def follow_list(pubkey_hsh)
       list = event('', 3)
       pubkey_hsh.each { |pubkey, (url, name)|
-        list.ref_pubkey(Nostr.hexkey!(pubkey),
+        list.ref_pubkey(Nostr.pubkey!(pubkey),
                         Nostr.txt!(url),
                         Nostr.txt!(name))
       }
@@ -140,11 +137,11 @@ module Nostr
     end
 
     def add_ids(*event_ids)
-      @ids += event_ids.each { |id| Nostr.txt!(id, length: 64) }
+      @ids += event_ids.each { |id| Nostr.id!(id) }
     end
 
     def add_authors(*pubkeys)
-      @authors += pubkeys.each { |pubkey| Nostr.hexkey!(pubkey) }
+      @authors += pubkeys.each { |pubkey| Nostr.pubkey!(pubkey) }
     end
 
     def add_kinds(*kinds)

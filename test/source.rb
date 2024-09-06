@@ -108,9 +108,7 @@ describe "stuff" do
   it "creates EVENT messages to publish signed events" do
     sk, pk = SchnorrSig.keypair
     e = Event.new(pk: pk).sign(sk)
-    m = Source.publish(e)
-    expect(m).must_be_kind_of String
-    a = Nostr.parse(m)
+    a = Source.publish(e)
     expect(a).must_be_kind_of Array
     expect(a[0]).must_equal "EVENT"
   end
@@ -120,18 +118,14 @@ describe "stuff" do
     pubkey = SchnorrSig.bin2hex Random.bytes(32)
     sid = Source.random_sid
     f.add_authors(pubkey)
-    m = Source.subscribe(sid, f)
-    expect(m).must_be_kind_of String
-    a = Nostr.parse(m)
+    a = Source.subscribe(sid, f)
     expect(a).must_be_kind_of Array
     expect(a[0]).must_equal "REQ"
   end
 
   it "creates CLOSE messages to end all subscriptions / streams" do
     sid = Source.random_sid
-    m = Source.close(sid)
-    expect(m).must_be_kind_of String
-    a = Nostr.parse(m)
+    a = Source.close(sid)
     expect(a).must_be_kind_of Array
     expect(a[0]).must_equal "CLOSE"
   end
