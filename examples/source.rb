@@ -11,14 +11,11 @@ marge = Nostr::Source.new(marge_pk)
 hello = marge.text_note('Good morning, Homie')
 signed = hello.sign(marge_sk)
 
-puts "Content"
-puts hello
+puts "Content: #{hello}"
 puts
-puts "Serialized"
-puts hello.to_a.inspect
+puts "Serialized: #{hello.to_a.inspect}"
 puts
-puts "Signed"
-puts signed.to_json
+puts "Signed: #{signed.to_h}"
 puts
 
 #####
@@ -32,14 +29,11 @@ response = homer.text_note('Good morning, Marge')
 response.ref_event(signed.id) # reference marge's hello
 signed = response.sign(homer_sk)
 
-puts "Content"
-puts response
+puts "Content: #{response}"
 puts
-puts "Serialized"
-puts response.to_a.inspect
+puts "Serialized: #{response.to_a.inspect}"
 puts
-puts "Signed"
-puts signed.to_json
+puts "Signed: #{signed.to_h}"
 puts
 
 #####
@@ -53,14 +47,11 @@ love_letter = maggie.text_note("Dear Mom,\nYou're the best.\nLove, Maggie")
 love_letter.ref_pubkey(marge.pubkey)
 signed = love_letter.sign(maggie_sk)
 
-puts "Content"
-puts love_letter
+puts "Content: #{love_letter}"
 puts
-puts "Serialized"
-puts love_letter.to_a.inspect
+puts "Serialized: #{love_letter.to_a.inspect}"
 puts
-puts "Signed"
-puts signed.to_json
+puts "Signed: #{signed.to_h}"
 puts
 
 #####
@@ -76,14 +67,11 @@ profile = bart.user_metadata(name: 'Bart',
                              '/wikipedia/en/a/aa/Bart_Simpson_200px.png')
 signed = profile.sign(bart_sk)
 
-puts "Content"
-puts profile
+puts "Content: #{profile}"
 puts
-puts "Serialized"
-puts  profile.to_a.inspect
+puts "Serialized: #{profile.to_a.inspect}"
 puts
-puts "Signed"
-puts signed.to_json
+puts "Signed: #{signed.to_h}"
 puts
 
 #####
@@ -104,12 +92,9 @@ pubkey_hsh = {
 following = lisa.follow_list(pubkey_hsh)
 signed = following.sign(lisa_sk)
 
-puts "Content"
-puts following
+puts "Content: #{following}"
 puts
-puts "Serialized"
-puts following.to_a.inspect
+puts "Serialized: #{following.to_a.inspect}"
 puts
-puts "Signed"
-puts signed.to_json
+puts "Signed: #{signed.to_h}"
 puts
