@@ -43,8 +43,8 @@ module Nostr
 
     def handle_event(hsh)
       begin
-        hsh = SignedEvent.verify(hsh)
-        eid = hsh.fetch(:id)
+        hsh = SignedEvent.validate!(hsh)
+        eid = hsh.fetch("id")
         @events << hsh
         @buffer << Server.ok(eid)
       rescue SignedEvent::Error => e

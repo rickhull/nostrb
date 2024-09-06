@@ -146,13 +146,13 @@ module Nostr
     def sig = SchnorrSig.bin2hex(@signature)
 
     def to_h
-      Hash[ content: @event.content,
-            pubkey: @event.pubkey,
-            kind: @event.kind,
-            tags: @event.tags,
-            created_at: @created_at,
-            id: self.id,
-            sig: self.sig ]
+      Hash[ "content" => @event.content,
+            "pubkey" => @event.pubkey,
+            "kind" => @event.kind,
+            "tags" => @event.tags,
+            "created_at" => @created_at,
+            "id" => self.id,
+            "sig" => self.sig ]
     end
   end
 end

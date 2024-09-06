@@ -190,14 +190,16 @@ describe SignedEvent do
   it "has a formalized Key-Value format" do
     h = signed_note().to_h
     expect(h).must_be_kind_of Hash
-    expect(h.fetch :id).must_be_kind_of String
-    expect(h.fetch :id).wont_be_empty
-    expect(h.fetch :pubkey).must_be_kind_of String
-    expect(h.fetch :created_at).must_be_kind_of Integer
-    expect(h.fetch :kind).must_be_kind_of Integer
-    expect(h.fetch :content).must_be_kind_of String
-    expect(h.fetch :sig).must_be_kind_of String
-    expect(h.fetch :sig).wont_be_empty
+    expect(h.fetch "content").must_be_kind_of String
+    expect(h.fetch "pubkey").must_be_kind_of String
+    expect(h["pubkey"]).wont_be_empty
+    expect(h.fetch "kind").must_be_kind_of Integer
+    expect(h.fetch "tags").must_be_kind_of Array
+    expect(h.fetch "created_at").must_be_kind_of Integer
+    expect(h.fetch "id").must_be_kind_of String
+    expect(h["id"]).wont_be_empty
+    expect(h.fetch "sig").must_be_kind_of String
+    expect(h["sig"]).wont_be_empty
   end
 
   it "has a formalized JSON format based on the object format" do

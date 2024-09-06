@@ -203,15 +203,15 @@ module Nostr
     end
 
     # Input
-    #   Ruby hash as returned from SignedEvent.ingest
-    def match?(e_hash)
-      return false if !@ids.empty? and !@ids.include?(e_hash[:id])
-      return false if !@authors.empty? and !@authors.include?(e_hash[:pubkey])
-      return false if !@kinds.empty? and !@kinds.include?(e_hash[:kind])
-      return false if @since and @since > e_hash[:created_at]
-      return false if @until and @until < e_hash[:created_at]
+    #   Ruby hash as returned from SignedEvent.validate!
+    def match?(valid)
+      return false if !@ids.empty? and !@ids.include?(valid["id"])
+      return false if !@authors.empty? and !@authors.include?(valid["pubkey"])
+      return false if !@kinds.empty? and !@kinds.include?(valid["kind"])
+      return false if @since and @since > valid["created_at"]
+      return false if @until and @until < valid["created_at"]
       if !@tags.empty?
-        tags = e_hash[:tags]
+        tags = valid["tags"]
         @tags.each { |letter, ary|
           tag_match = false
           tags.each { |(tag, val)|
