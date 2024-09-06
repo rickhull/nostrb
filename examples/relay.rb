@@ -1,11 +1,17 @@
 require 'nostrb/source'
 require 'nostrb/relay'
 
+# Bart uploads his profile; pubkey now discoverable
+# Marge requests recent profiles; discovers Bart's pubkey
+# Marge follows Bart
+# Marge uploads her profile
+# Homer requests recent profiles; discovers Marge's and Bart's pubkeys
 # Homer follows Marge
+# Lisa uploads her profile
+# Maggie uploads her profile
+# Marge requests recent profiles; discovers Lisa, Maggie
 # Marge follows Bart, Lisa, Maggie
-# Bart follows none
-# Lisa follows Homer, Marge, Bart, Maggie
-# Maggie follows Marge
+# Homer requests Marge's recent follows; discovers Lisa and Maggie
 
 include Nostr
 
@@ -52,7 +58,8 @@ puts "Relay response:"
 relay.ingest(json).each { |r| puts r }
 puts
 
-# Now Marge has bart's pubkey
+# marge contacts:
+# bart_pk => bart
 
 puts "Marge follows Bart"
 hsh = { bart[:pubkey] => ["", 'bart'] }
@@ -91,7 +98,9 @@ puts "Relay response:"
 relay.ingest(json).each { |r| puts r }
 puts
 
-# Now Homer has Marge's and Bart's pubkeys
+# homer contacts:
+# marge_pk => marge
+# bart_pk => bart
 
 puts "Homer follows Marge"
 hsh = { marge[:pubkey] => ['', 'marge'] }
@@ -146,7 +155,10 @@ puts "Relay response:"
 relay.ingest(json).each { |r| puts r }
 puts
 
-# now Marge has Lisa and Maggie pubkeys
+# marge contacts:
+# bart_pk => bart
+# lisa_pk => lisa
+# maggie_pk => maggie
 
 puts "Marge follows Bart, Lisa, Maggie"
 hsh = {
@@ -175,8 +187,8 @@ puts "Relay response"
 relay.ingest(json).each { |r| puts r }
 puts
 
-# homer's updated contact list
+# homer contacts:
 # marge_pk => marge
-# bart_pk => marge.bart
+# bart_pk => bart
 # lisa_pk => marge.lisa
 # maggie_pk => marge.maggie
