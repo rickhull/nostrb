@@ -23,67 +23,63 @@ context = {}
   context[name] = ctx
 }
 
-op = Operator.generate
+homer, marge = context['homer'], context['marge']
+bart, lisa, maggie = context['bart'], context['lisa'], context['maggie']
 
 puts "Homer follows Marge"
-homer = context['homer'][:source]
-ctx = context['marge']
-hsh = { ctx[:pubkey] => [ctx[:relay_url], 'marge'] }
-msg = homer.follow_list(hsh)
-signed = msg.sign(context['homer'][:sk])
-puts op.publish(signed)
+hsh = { marge[:pubkey] => [marge[:relay_url], 'marge'] }
+homer_follows = homer[:source].follow_list(hsh).sign(homer[:sk])
+puts Source.publish(homer_follows)
 puts
 
 puts "Marge follows Bart, Lisa, Maggie"
-marge = context['marge'][:source]
 hsh = {}
 ['bart', 'lisa', 'maggie'].each { |name|
   ctx = context[name]
   hsh[ctx[:pubkey]] = [ctx[:relay_url], name]
 }
-msg = marge.follow_list(hsh)
-signed = msg.sign(context['marge'][:sk])
-puts op.publish(signed)
+marge_follows = marge[:source].follow_list(hsh).sign(marge[:sk])
+puts Source.publish(marge_follows)
 puts
 
+# TODO: finish from here
+
 puts "Bart uploads his profile"
-bart = context['bart'][:source]
-msg = bart.user_metadata(name: 'Bart',
-                         about: 'Bartholomew Jojo Simpson',
-                         picture: 'https://upload.wikimedia.org' +
-                         '/wikipedia/en/a/aa/Bart_Simpson_200px.png')
-signed = msg.sign(context['bart'][:sk])
-puts op.publish(signed)
+hsh = {
+  name: 'Bart',
+  about: 'Bartholomew Jojo Simpson',
+  picture: 'https://upload.wikimedia.org/wikipedia/en/a/aa/' +
+  'Bart_Simpson_200px.png',
+}
+bart_profile = bart[:source].user_metadata(**hsh).sign(bart[:sk])
+puts Source.publish(bart_profile)
 puts
 
 puts "Lisa follows Homer, Marge, Bart, Maggie"
-lisa = context['lisa'][:source]
 hsh = {}
 ['homer', 'marge', 'bart', 'maggie'].each { |name|
   ctx = context[name]
   hsh[ctx[:pubkey]] = [ctx[:relay_url], name]
 }
-msg = lisa.follow_list(hsh)
-signed = msg.sign(context['lisa'][:sk])
-puts op.publish(signed)
+lisa_follows = lisa[:source].follow_list(hsh).sign(lisa[:sk])
+puts Source.publish(lisa_follows)
 puts
 
 puts "Maggie follows Marge"
-maggie = context['maggie'][:source]
-ctx = context['marge']
-hsh = { ctx[:pubkey] => [ctx[:relay_url], 'marge'] }
-msg = maggie.follow_list(hsh)
-signed = msg.sign(context['maggie'][:sk])
-puts op.publish(signed)
+hsh = { marge[:pubkey] => [marge[:relay_url], 'marge'] }
+maggie_follows = maggie[:source].follow_list(hsh).sign(maggie[:sk])
+puts Source.publish(maggie_follows)
 puts
 
 puts "Homer gets Marge's follows"
 f = Filter.new
-f.add_authors(context['marge'][:pubkey])
+f.add_authors(marge[:pubkey])
 f.add_kinds(3)
 f.since = Time.now.to_i - Seconds.days(30)
-op = Operator.new(context['homer'][:pubkey])
-puts op.subscribe(f)
+puts Source.subscribe(homer[:pubkey], f)
+puts
+
+puts Source.publish(marge_follows)
 puts
 
 # homer's contact list
@@ -94,10 +90,13 @@ puts
 
 puts "Homer gets Lisa's follows"
 f = Filter.new
-f.add_authors(context['lisa'][:pubkey])
+f.add_authors(lisa[:pubkey])
 f.add_kinds(3)
 f.since = Time.now.to_i - Seconds.days(30)
-puts op.subscribe(f)
+puts Source.subscribe(homer[:pubkey], f)
+puts
+
+puts Source.publish(lisa_follows)
 puts
 
 # now homer has: bart_pk => marge.lisa.bart

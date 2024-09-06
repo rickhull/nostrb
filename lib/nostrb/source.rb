@@ -7,6 +7,24 @@ module Nostr
   #
 
   class Source
+    # add a 4th layer of nesting for the array wrapper
+    JSON_OPTIONS = Nostr::JSON_OPTIONS.merge(max_nesting: 4)
+
+    def self.json(array) = JSON.generate(Nostr.ary!(array), **JSON_OPTIONS)
+
+    def self.publish(signed) = json(["EVENT", signed.to_h])
+
+    def self.subscribe(sid, *filters)
+      json(["REQ", Nostr.txt!(sid, max: 64),
+            *filters.map { |f| Nostr.check!(f, Filter).to_h }])
+    end
+
+    def self.close(sid) = json(["CLOSE", Nostr.txt!(sid, max: 64)])
+
+    def self.random_sid
+      SchnorrSig.bin2hex Random.bytes(32)
+    end
+
     attr_reader :pk
 
     def initialize(pk)
@@ -78,41 +96,32 @@ module Nostr
   end
 
   module Seconds
-    def milliseconds(i)
-      i / 1000r
-    end
+    def milliseconds(i) = i / 1000r
+    def seconds(i) = i
+    def minutes(i) = 60 * i
+    def hours(i)   = 60 * minutes(i)
+    def days(i)    = 24 * hours(i)
+    def weeks(i)   =  7 * days(i)
+    def months(i)  = years(i) / 12
+    def years(i)   = 365 * days(i)
 
-    def seconds(i)
-      i
-    end
-
-    def minutes(i)
-      60 * i
-    end
-
-    def hours(i)
-      60 * minutes(i)
-    end
-
-    def days(i)
-      24 * hours(i)
-    end
-
-    def weeks(i)
-      7 * days(i)
-    end
-
-    def months(i)
-      30 * days(i)
-    end
-
-    def years(i)
-      365 * days(i)
+    def process(hsh)
+      seconds = 0
+      [:seconds, :minutes, :hours, :days, :weeks, :months, :years].each { |p|
+        seconds += send(p, hsh[p]) if hsh.key?(p)
+      }
+      seconds
     end
   end
   Seconds.extend(Seconds)
 
   class Filter
+    def self.ago(hsh)
+      Time.now.to_i - Seconds.process(hsh)
+    end
+
+    attr_reader :ids, :authors, :kinds, :tags, :limit
+
     def initialize
       @ids = []
       @authors = []
@@ -141,16 +150,18 @@ module Nostr
       }
     end
 
+    def since(hsh = nil) = hsh.nil? ? @since : (@since = Filter.ago(hsh))
     def since=(int)
-      @since = Nostr.int!(int)
+      @since = int.nil? ? nil : Nostr.int!(int)
     end
 
+    def until(hsh = nil) = hsh.nil? ? @until : (@until = Filter.ago(hsh))
     def until=(int)
-      @until = Nostr.int!(int)
+      @until = int.nil? ? nil : Nostr.int!(int)
     end
 
     def limit=(int)
-      @limit = Nostr.int!(int)
+      @limit = int.nil? ? nil : Nostr.int!(int)
     end
 
     def to_h
@@ -165,40 +176,6 @@ module Nostr
       h["until"] = @until unless @until.nil?
       h["limit"] = @limit unless @limit.nil?
       h
-    end
-  end
-
-  class Operator
-    # add a 4th layer of nesting for the array wrapper
-    JSON_OPTIONS = Nostr::JSON_OPTIONS.merge(max_nesting: 4)
-
-    def self.json(array) = JSON.generate(Nostr.ary!(array), **JSON_OPTIONS)
-    def self.sid = SchnorrSig.bin2hex Random.bytes(32)
-    def self.generate = new(self.sid)
-
-    def initialize(subscription_id)
-      @sid = Nostr.txt!(subscription_id)
-      raise "too long" if @sid.length > 64
-    end
-
-    def publish(signed) = Operator.json(["EVENT", signed.to_h])
-
-    def subscribe(*filters)
-      Operator.json(["REQ", @sid,
-                     *filters.map { |f| Nostr.check!(f, Filter).to_h }])
-    end
-
-    def close = Operator.json(["CLOSE", @sid])
-  end
-
-  # Not used
-  class Contact
-    attr_reader :name, :pubkey, :relays
-
-    def initialize(name, pubkey, *relay_urls)
-      @name = Nostr.txt!(name)
-      @pubkey = Nostr.txt!(pubkey, 64)
-      @relays = relay_urls.each { |u| Nostr.txt!(u) }
     end
   end
 end

@@ -104,18 +104,11 @@ describe Filter do
   end
 end
 
-describe Operator do
-  it "initializes with a subscription_id" do
-    sid = SchnorrSig.bin2hex Random.bytes(32)
-    o = Operator.new(sid)
-    expect(o).must_be_kind_of Operator
-  end
-
+describe "stuff" do
   it "creates EVENT messages to publish signed events" do
     sk, pk = SchnorrSig.keypair
     e = Event.new(pk: pk).sign(sk)
-    o = Operator.generate
-    m = o.publish(e)
+    m = Source.publish(e)
     expect(m).must_be_kind_of String
     a = Nostr.parse(m)
     expect(a).must_be_kind_of Array
@@ -125,9 +118,9 @@ describe Operator do
   it "creates REQ messages to subscribe to events using filters" do
     f = Filter.new
     pubkey = SchnorrSig.bin2hex Random.bytes(32)
+    sid = Source.random_sid
     f.add_authors(pubkey)
-    o = Operator.generate
-    m = o.subscribe(f)
+    m = Source.subscribe(sid, f)
     expect(m).must_be_kind_of String
     a = Nostr.parse(m)
     expect(a).must_be_kind_of Array
@@ -135,7 +128,8 @@ describe Operator do
   end
 
   it "creates CLOSE messages to end all subscriptions / streams" do
-    m = Operator.generate.close
+    sid = Source.random_sid
+    m = Source.close(sid)
     expect(m).must_be_kind_of String
     a = Nostr.parse(m)
     expect(a).must_be_kind_of Array
