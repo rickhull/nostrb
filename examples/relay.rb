@@ -44,7 +44,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 puts "Marge requests recent profiles"
@@ -55,7 +55,7 @@ json = Nostr.json Source.subscribe(marge[:pubkey], f)
 puts json
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 # marge contacts:
@@ -69,7 +69,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 puts "Marge uploads her profile"
@@ -84,7 +84,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 puts "Homer requests recent profiles"
@@ -95,7 +95,7 @@ json = Nostr.json Source.subscribe(homer[:pubkey], f)
 puts json
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 # homer contacts:
@@ -110,7 +110,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 puts "Lisa uploads her profile"
@@ -125,7 +125,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 puts "Maggie uploads her profile"
@@ -140,7 +140,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 
@@ -152,7 +152,7 @@ json = Nostr.json Source.subscribe(marge[:pubkey], f)
 puts json
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 # marge contacts:
@@ -171,7 +171,7 @@ puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 puts "Homer requests Marge's follows"
@@ -184,7 +184,7 @@ puts json
 puts
 
 puts "Relay response"
-relay.ingest(json).each { |r| puts r }
+relay.ingest(json).each { |r| puts Nostr.json(r) }
 puts
 
 # homer contacts:
