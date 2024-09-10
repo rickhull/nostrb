@@ -205,11 +205,11 @@ module Nostr
     # Input
     #   Ruby hash as returned from SignedEvent.validate!
     def match?(valid)
-      return false if !@ids.empty? and !@ids.include?(valid["id"])
+      return false if !@ids.empty?     and !@ids.include?(valid["id"])
       return false if !@authors.empty? and !@authors.include?(valid["pubkey"])
-      return false if !@kinds.empty? and !@kinds.include?(valid["kind"])
-      return false if @since and @since > valid["created_at"]
-      return false if @until and @until < valid["created_at"]
+      return false if !@kinds.empty?   and !@kinds.include?(valid["kind"])
+      return false if !@since.nil?     and @since > valid["created_at"]
+      return false if !@until.nil?     and @until < valid["created_at"]
       if !@tags.empty?
         tags = valid["tags"]
         @tags.each { |letter, ary|
