@@ -14,10 +14,8 @@ module Nostr
     def self.message(excp) = format("%s: %s", excp.class, excp.message)
     def self.error(e) = notice(message(e))
 
-    attr_reader :events
-
     def initialize
-      @events = [] # all events accepted
+      @events = {} # { pubkey => [event_hash] }
     end
 
     # accepts a single json array
@@ -38,32 +36,68 @@ module Nostr
       end
     end
 
+    # update @events, keyed by pubkey
+    def add_event(hsh)
+      pubkey = hsh.fetch "pubkey"
+      if @events[pubkey]
+        @events[pubkey] << hsh
+      else
+        @events[pubkey] = [hsh]
+      end
+      self
+    end
+
     # return a single response
     def handle_event(hsh)
       begin
-        hsh = SignedEvent.validate!(hsh)
-        eid = hsh.fetch("id")
-        @events << hsh
+        hsh = SignedEvent.validate!(hsh) # only raises Nostr::Error
+      rescue Nostr::Error, KeyError, RuntimeError => e
+        Server.error(e)
+      end
+
+      eid = hsh.fetch('id')
+
+      begin
+        add_event(hsh)
         Server.ok(eid)
       rescue SignedEvent::Error => e
         Server.ok(eid, Server.message(e), ok: false)
-      rescue Nostr::Error, KeyError => e
+      rescue Nostr::Error, KeyError, RuntimeError => e
         Server.error(e)
-      rescue RuntimeError => e
-        Server.error(e)
+      end
+    end
+
+    # return an array of events, matching pubkey if provided
+    def events(pubkey: nil)
+      if !pubkey.nil?
+        return [] unless (ary = @events[pubkey])
+        ary
+      else
+        @events.values.flatten
       end
     end
 
     # return an array of response
     def handle_req(sid, *filters)
       responses = []
-      @events.each { |e|
+      events = []
+      filters.each { |f|
+        if f.authors.empty?
+          events += self.events
+        else
+          f.authors.each { |pub|
+            events += self.events(pubkey: pub)
+          }
+        end
+      }
+
+      events.each { |h|
         match = false
         filters.each { |f|
           next if match
-          match = f.match?(e)
+          match = f.match?(h)
         }
-        responses << Server.event(sid, e) if match
+        responses << Server.event(sid, h) if match
       }
       responses << Server.eose(sid)
     end
