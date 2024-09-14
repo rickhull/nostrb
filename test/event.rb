@@ -5,14 +5,6 @@ include Nostr
 
 $sk, $pk = SchnorrSig.keypair
 
-def text_note(content = '')
-  Event.new(content, kind: 1, pk: $pk)
-end
-
-def signed_note(content = '')
-  SignedEvent.new(text_note(content), $sk)
-end
-
 $parsed = {
   "content" => "hello world",
   "pubkey" => "18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
@@ -24,6 +16,10 @@ $parsed = {
 }
 
 describe Event do
+  def text_note(content = '')
+    Event.new(content, kind: 1, pk: $pk)
+  end
+
   describe "class functions" do
     it "computes a 32 byte digest of a JSON serialization" do
       a = SignedEvent.serialize($parsed)
@@ -136,6 +132,10 @@ describe Event do
 end
 
 describe SignedEvent do
+  def signed_note(content = '')
+    Event.new(content, kind: 1, pk: $pk).sign($sk)
+  end
+
   describe "class functions" do
     it "validates a JSON parsed hash" do
       h = SignedEvent.validate!($parsed)
@@ -169,7 +169,7 @@ describe SignedEvent do
   end
 
   it "signs the event, given a private key in binary format" do
-    signed = text_note().sign($sk)
+    signed = signed_note()
     expect(signed).must_be_kind_of SignedEvent
     expect(signed.id).must_be_kind_of String
     expect(signed.created_at).must_be_kind_of Integer

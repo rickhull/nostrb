@@ -7,20 +7,20 @@ TYPES = ["EVENT", "OK", "EOSE", "CLOSED", "NOTICE"]
 
 $sk, $pk = SchnorrSig.keypair
 
-def text_note(content = '')
-  Event.new(content, pk: $pk).sign($sk)
-end
-
-def valid_response!(resp)
-  expect(resp).must_be_kind_of Array
-  expect(resp.length).must_be :>=, 2
-  expect(resp.length).must_be :<=, 4
-  resp[0..1].each { |s| expect(s).must_be_kind_of String }
-  expect(resp[0].upcase).must_equal resp[0]
-  expect(TYPES.include?(resp[0])).must_equal true
-end
-
 describe Server do
+  def text_note(content = '')
+    Event.new(content, pk: $pk).sign($sk)
+  end
+
+  def valid_response!(resp)
+    expect(resp).must_be_kind_of Array
+    expect(resp.length).must_be :>=, 2
+    expect(resp.length).must_be :<=, 4
+    resp[0..1].each { |s| expect(s).must_be_kind_of String }
+    expect(resp[0].upcase).must_equal resp[0]
+    expect(TYPES.include?(resp[0])).must_equal true
+  end
+
   describe "class functions" do
     it "has an EVENT response, given subscriber_id and requested event" do
       event = text_note()
