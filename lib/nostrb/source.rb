@@ -1,7 +1,7 @@
 require 'nostrb/event'
 require 'nostrb/filter'
 
-module Nostr
+module Nostrb
 
   #
   # A Source holds a public key and creates Events.
@@ -14,12 +14,12 @@ module Nostr
     def self.publish(signed) = ["EVENT", signed.to_h]
 
     def self.subscribe(sid, *filters)
-      ["REQ", Nostr.sid!(sid), *filters.map { |f|
-         Nostr.check!(f, Filter).to_h
+      ["REQ", Nostrb.sid!(sid), *filters.map { |f|
+         Nostrb.check!(f, Filter).to_h
       }]
     end
 
-    def self.close(sid) = ["CLOSE", Nostr.sid!(sid)]
+    def self.close(sid) = ["CLOSE", Nostrb.sid!(sid)]
 
     #######################
     # Utils / Init
@@ -31,7 +31,7 @@ module Nostr
     attr_reader :pk
 
     def initialize(pk)
-      @pk = Nostr.key!(pk)
+      @pk = Nostrb.key!(pk)
     end
 
     def pubkey = SchnorrSig.bin2hex(@pk)
@@ -55,10 +55,10 @@ module Nostr
     #     content: {"name":<username>,"about":<string>,"picture":<url>}
     #     kind: 0, user metadata
     def user_metadata(name:, about:, picture:, **kwargs)
-      full = kwargs.merge(name: Nostr.txt!(name),
-                          about: Nostr.txt!(about),
-                          picture: Nostr.txt!(picture))
-      event(Nostr.json(full), 0)
+      full = kwargs.merge(name: Nostrb.txt!(name),
+                          about: Nostrb.txt!(about),
+                          picture: Nostrb.txt!(picture))
+      event(Nostrb.json(full), 0)
     end
     alias_method :profile, :user_metadata
 
@@ -74,9 +74,9 @@ module Nostr
     def follow_list(pubkey_hsh)
       list = event('', 3)
       pubkey_hsh.each { |pubkey, (url, name)|
-        list.ref_pubkey(Nostr.pubkey!(pubkey),
-                        Nostr.txt!(url),
-                        Nostr.txt!(name))
+        list.ref_pubkey(Nostrb.pubkey!(pubkey),
+                        Nostrb.txt!(url),
+                        Nostrb.txt!(name))
       }
       list
     end

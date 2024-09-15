@@ -10,7 +10,7 @@ require 'nostrb'
 
 # for replaceable events with same timestamp, lowest id wins
 
-module Nostr
+module Nostrb
   class Event
 
     # Event
@@ -19,21 +19,21 @@ module Nostr
     #   kind: 0..65535
     #   tags: Array[Array[string]]
 
-    def self.digest(ary) = Nostr.digest(Nostr.json(Nostr.ary!(ary)))
+    def self.digest(ary) = Nostrb.digest(Nostrb.json(Nostrb.ary!(ary)))
 
     attr_reader :content, :pk, :kind, :tags
 
     def initialize(content = '', pk:, kind: 1, tags: [])
-      @content = Nostr.txt!(content)
-      @pk      = Nostr.key!(pk)
-      @kind    = Nostr.kind!(kind)
-      @tags    = Nostr.tags!(tags)
+      @content = Nostrb.txt!(content)
+      @pk      = Nostrb.key!(pk)
+      @kind    = Nostrb.kind!(kind)
+      @tags    = Nostrb.tags!(tags)
     end
 
     alias_method :to_s, :content
 
     def serialize(created_at)
-      [0, self.pubkey, Nostr.int!(created_at), @kind, @tags, @content]
+      [0, self.pubkey, Nostrb.int!(created_at), @kind, @tags, @content]
     end
 
     def to_a = serialize(Time.now.to_i)
@@ -47,23 +47,23 @@ module Nostr
 
     # add an array of 2+ strings to @tags
     def add_tag(tag, value, *rest)
-      @tags.push([Nostr.txt!(tag), Nostr.txt!(value)] +
-                 rest.each { |s| Nostr.txt!(s) })
+      @tags.push([Nostrb.txt!(tag), Nostrb.txt!(value)] +
+                 rest.each { |s| Nostrb.txt!(s) })
     end
 
     # add an event tag based on event id, hex encoded
     def ref_event(eid_hex, *rest)
-      add_tag('e', Nostr.id!(eid_hex), *rest)
+      add_tag('e', Nostrb.id!(eid_hex), *rest)
     end
 
     # add a pubkey tag based on pubkey, 64 bytes hex encoded
     def ref_pubkey(pubkey, *rest)
-      add_tag('p', Nostr.pubkey!(pubkey), *rest)
+      add_tag('p', Nostrb.pubkey!(pubkey), *rest)
     end
 
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
-      val = [Nostr.kind!(kind), Nostr.pubkey!(pubkey), d_tag].join(':')
+      val = [Nostrb.kind!(kind), Nostrb.pubkey!(pubkey), d_tag].join(':')
       add_tag('a', val, *rest)
     end
   end
@@ -79,18 +79,18 @@ module Nostr
     class SignatureCheck < Error; end
 
     def self.validate!(parsed)
-      Nostr.check!(parsed, Hash)
-      Nostr.txt!(parsed.fetch("content"))
-      Nostr.pubkey!(parsed.fetch("pubkey"))
-      Nostr.kind!(parsed.fetch("kind"))
-      Nostr.tags!(parsed.fetch("tags"))
-      Nostr.int!(parsed.fetch("created_at"))
-      Nostr.id!(parsed.fetch("id"))
-      Nostr.sig!(parsed.fetch("sig"))
+      Nostrb.check!(parsed, Hash)
+      Nostrb.txt!(parsed.fetch("content"))
+      Nostrb.pubkey!(parsed.fetch("pubkey"))
+      Nostrb.kind!(parsed.fetch("kind"))
+      Nostrb.tags!(parsed.fetch("tags"))
+      Nostrb.int!(parsed.fetch("created_at"))
+      Nostrb.id!(parsed.fetch("id"))
+      Nostrb.sig!(parsed.fetch("sig"))
       parsed
     end
 
-    def self.digest(valid) = Nostr.digest(Nostr.json(serialize(valid)))
+    def self.digest(valid) = Nostrb.digest(Nostrb.json(serialize(valid)))
 
     def self.serialize(valid)
       Array[ 0,
@@ -103,7 +103,7 @@ module Nostr
 
     # Validate the id (optional) and signature
     # May raise explicitly: IdCheck, SignatureCheck
-    # May raise implicitly: Nostr::SizeError, EncodingError, TypeError,
+    # May raise implicitly: Nostrb::SizeError, EncodingError, TypeError,
     #                       SchnorrSig::Error
     # Return a _completely validated_ hash
     def self.verify(valid, check_id: true)
@@ -127,10 +127,10 @@ module Nostr
 
     # sk is used to generate @signature and then discarded
     def initialize(event, sk)
-      @event = Nostr.check!(event, Event)
+      @event = Nostrb.check!(event, Event)
       @created_at = Time.now.to_i
       @digest = @event.digest(@created_at)
-      @signature = SchnorrSig.sign(Nostr.key!(sk), @digest)
+      @signature = SchnorrSig.sign(Nostrb.key!(sk), @digest)
     end
 
     def content = @event.content

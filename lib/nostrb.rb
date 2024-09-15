@@ -2,7 +2,7 @@ require 'schnorr_sig'
 require 'json'
 require 'digest'
 
-module Nostr
+module Nostrb
   class Error < RuntimeError; end
   class SizeError < Error; end
   class FormatError < Error; end

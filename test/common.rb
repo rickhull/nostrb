@@ -1,6 +1,6 @@
 require 'nostrb/event'
 
-module Nostr
+module Nostrb
   module Test
     SK, PK = SchnorrSig.keypair
     EVENT = Event.new('testing', pk: PK)

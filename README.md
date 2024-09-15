@@ -44,7 +44,7 @@ require 'nostrb/source'
 sk, pk = SchnorrSig.keypair
 
 # client needs a public key
-client = Nostr::Source.new(pk)
+client = Nostrb::Source.new(pk)
 
 # create a message
 hello = client.text_note('hello world')
@@ -92,7 +92,7 @@ serialization or digest will be invalid.
 
 ### Library Structure
 
-* `module Nostr`: encapsulates this library; provides utility functions
+* `module Nostrb`: encapsulates this library; provides utility functions
   * `class Event`: a basic Event with no handling for `created_at`, `id`, `sig`
   * `class SignedEvent`: upon signing, wraps an Event with
     `created_at`, `id`, `sig`

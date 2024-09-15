@@ -3,9 +3,9 @@ require 'nostrb/source'
 require_relative 'common'
 require 'minitest/autorun'
 
-include Nostr
+include Nostrb
 
-Test::VALID_JSON = Nostr.json(Source.publish(Test::SIGNED))
+Test::VALID_JSON = Nostrb.json(Source.publish(Test::SIGNED))
 
 describe Server do
   def valid_response!(resp)
@@ -84,7 +84,7 @@ describe Server do
       expect(r).must_be_kind_of Exception
       expect(Server.message(r)).must_equal "RuntimeError: stuff"
 
-      e = Nostr::Error.new("things")
+      e = Nostrb::Error.new("things")
       expect(e).must_be_kind_of Exception
       expect(Server.message(e)).must_equal "Error: things"
     end
@@ -105,7 +105,7 @@ describe Server do
 
   it "stores inbound events" do
     s = Server.new
-    s.ingest(Nostr.json(Source.publish(Test::SIGNED)))
+    s.ingest(Nostrb.json(Source.publish(Test::SIGNED)))
     events = s.events
     expect(events).must_be_kind_of Array
     expect(events.length).must_equal 1
@@ -129,9 +129,9 @@ describe Server do
 
   it "rejects unknown request types" do
     # invalid request type: respond error / NOTICE
-    ary = Nostr.parse(Test::VALID_JSON)
+    ary = Nostrb.parse(Test::VALID_JSON)
     ary[0] = ary[0].downcase
-    responses = Server.new.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -144,11 +144,11 @@ describe Server do
 
   it "rejects events with missing fields" do
     # event missing "id": respond error / NOTICE
-    ary = Nostr.parse(Test::VALID_JSON)
+    ary = Nostrb.parse(Test::VALID_JSON)
     hsh = ary[1]
     hsh.delete("id")
     ary[1] = hsh
-    responses = Server.new.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -161,11 +161,11 @@ describe Server do
 
   it "rejects events with invalid format" do
     # short signature: response error / NOTICE
-    ary = Nostr.parse(Test::VALID_JSON)
+    ary = Nostrb.parse(Test::VALID_JSON)
     hsh = ary[1]
     hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(32))
     ary[1] = hsh
-    responses = Server.new.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -178,11 +178,11 @@ describe Server do
 
   it "rejects events with invalid signature" do
     # invalid signature, respond OK: false
-    ary = Nostr.parse(Test::VALID_JSON)
+    ary = Nostrb.parse(Test::VALID_JSON)
     hsh = ary[1]
     hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
     ary[1] = hsh
-    responses = Server.new.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -197,11 +197,11 @@ describe Server do
 
   it "rejects events with invalid id" do
     # invalid id, respond OK: false
-    ary = Nostr.parse(Test::VALID_JSON)
+    ary = Nostrb.parse(Test::VALID_JSON)
     hsh = ary[1]
     hsh["id"] = SchnorrSig.bin2hex(Random.bytes(32))
     ary[1] = hsh
-    responses = Server.new.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -225,7 +225,7 @@ describe Server do
     e1 = Event.new('one', pk: Test::PK).sign(Test::SK)
     e2 = Event.new('two', pk: Test::PK).sign(Test::SK)
     [e1, e2].each { |e|
-      responses = s.ingest(Nostr.json(Source.publish(e)))
+      responses = s.ingest(Nostrb.json(Source.publish(e)))
       expect(responses).must_be_kind_of Array
       expect(responses.length).must_equal 1
       resp = responses[0]
@@ -237,7 +237,7 @@ describe Server do
 
     # with no filters, nothing will match
     sid = e1.pubkey
-    responses = s.ingest(Nostr.json(Source.subscribe(sid)))
+    responses = s.ingest(Nostrb.json(Source.subscribe(sid)))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
     resp = responses[0]
@@ -249,7 +249,7 @@ describe Server do
     f = Filter.new
     f.add_authors e1.pubkey
 
-    responses = s.ingest(Nostr.json(Source.subscribe(sid, f)))
+    responses = s.ingest(Nostrb.json(Source.subscribe(sid, f)))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 3
 
@@ -274,7 +274,7 @@ describe Server do
   it "has a single response to CLOSE requests" do
     s = Server.new
     sid = Test::EVENT.pubkey
-    responses = s.ingest(Nostr.json(Source.close(sid)))
+    responses = s.ingest(Nostrb.json(Source.close(sid)))
 
     # respond CLOSED
     expect(responses).must_be_kind_of Array

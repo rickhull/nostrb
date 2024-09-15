@@ -1,4 +1,4 @@
-module Nostr
+module Nostrb
   module Seconds
     def milliseconds(i) = i / 1000r
     def seconds(i) = i
@@ -72,34 +72,34 @@ module Nostr
     end
 
     def add_ids(*event_ids)
-      @ids += event_ids.each { |id| Nostr.id!(id) }
+      @ids += event_ids.each { |id| Nostrb.id!(id) }
     end
 
     def add_authors(*pubkeys)
-      @authors += pubkeys.each { |pubkey| Nostr.pubkey!(pubkey) }
+      @authors += pubkeys.each { |pubkey| Nostrb.pubkey!(pubkey) }
     end
 
     def add_kinds(*kinds)
-      @kinds += kinds.each { |k| Nostr.kind!(k) }
+      @kinds += kinds.each { |k| Nostrb.kind!(k) }
     end
 
     def add_tag(letter, list)
-      @tags[Nostr.txt!(letter, length: 1)] =
-        Nostr.ary!(list, max: 99).each { |s| Nostr.txt!(s) }
+      @tags[Nostrb.txt!(letter, length: 1)] =
+        Nostrb.ary!(list, max: 99).each { |s| Nostrb.txt!(s) }
     end
 
     def since(hsh = nil) = hsh.nil? ? @since : (@since = Filter.ago(hsh))
     def since=(int)
-      @since = int.nil? ? nil : Nostr.int!(int)
+      @since = int.nil? ? nil : Nostrb.int!(int)
     end
 
     def until(hsh = nil) = hsh.nil? ? @until : (@until = Filter.ago(hsh))
     def until=(int)
-      @until = int.nil? ? nil : Nostr.int!(int)
+      @until = int.nil? ? nil : Nostrb.int!(int)
     end
 
     def limit=(int)
-      @limit = int.nil? ? nil : Nostr.int!(int)
+      @limit = int.nil? ? nil : Nostrb.int!(int)
     end
 
     # Input

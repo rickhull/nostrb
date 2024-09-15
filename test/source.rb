@@ -2,7 +2,7 @@ require 'nostrb/source'
 require_relative 'common'
 require 'minitest/autorun'
 
-include Nostr
+include Nostrb
 
 describe Source do
   describe "instantiation" do

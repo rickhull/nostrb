@@ -2,7 +2,7 @@ require 'nostrb/event'
 require_relative 'common.rb'
 require 'minitest/autorun'
 
-include Nostr
+include Nostrb
 
 describe Event do
   def text_note(content = '')

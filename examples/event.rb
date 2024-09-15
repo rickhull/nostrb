@@ -1,6 +1,6 @@
 require 'nostrb/event'
 
-include Nostr
+include Nostrb
 
 puts "Key Generation"
 sk, pk = SchnorrSig.keypair

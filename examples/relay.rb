@@ -13,7 +13,7 @@ require 'nostrb/relay'
 # Marge follows Bart, Lisa, Maggie
 # Homer requests Marge's recent follows; discovers Lisa and Maggie
 
-include Nostr
+include Nostrb
 
 context = {}
 
@@ -39,23 +39,23 @@ hsh = {
   'Bart_Simpson_200px.png',
 }
 bart_profile = bart[:source].user_metadata(**hsh).sign(bart[:sk])
-json = Nostr.json Source.publish(bart_profile)
+json = Nostrb.json Source.publish(bart_profile)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 puts "Marge requests recent profiles"
 f = Filter.new
 f.add_kinds(0)
 f.since(minutes: 30)
-json = Nostr.json Source.subscribe(marge[:pubkey], f)
+json = Nostrb.json Source.subscribe(marge[:pubkey], f)
 puts json
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 # marge contacts:
@@ -64,12 +64,12 @@ puts
 puts "Marge follows Bart"
 hsh = { bart[:pubkey] => ["", 'bart'] }
 marge_follows = marge[:source].follow_list(hsh).sign(marge[:sk])
-json = Nostr.json Source.publish(marge_follows)
+json = Nostrb.json Source.publish(marge_follows)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 puts "Marge uploads her profile"
@@ -79,23 +79,23 @@ hsh = {
   picture: '',
 }
 marge_profile = marge[:source].user_metadata(**hsh).sign(marge[:sk])
-json = Nostr.json Source.publish(marge_profile)
+json = Nostrb.json Source.publish(marge_profile)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 puts "Homer requests recent profiles"
 f = Filter.new
 f.add_kinds(0)
 f.since(minutes: 30)
-json = Nostr.json Source.subscribe(homer[:pubkey], f)
+json = Nostrb.json Source.subscribe(homer[:pubkey], f)
 puts json
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 # homer contacts:
@@ -105,12 +105,12 @@ puts
 puts "Homer follows Marge"
 hsh = { marge[:pubkey] => ['', 'marge'] }
 homer_follows = homer[:source].follow_list(hsh).sign(homer[:sk])
-json = Nostr.json Source.publish(homer_follows)
+json = Nostrb.json Source.publish(homer_follows)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 puts "Lisa uploads her profile"
@@ -120,12 +120,12 @@ hsh = {
   picture: '',
 }
 lisa_profile = lisa[:source].user_metadata(**hsh).sign(lisa[:sk])
-json = Nostr.json Source.publish(lisa_profile)
+json = Nostrb.json Source.publish(lisa_profile)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 puts "Maggie uploads her profile"
@@ -135,12 +135,12 @@ hsh = {
   picture: '',
 }
 maggie_profile = maggie[:source].user_metadata(**hsh).sign(maggie[:sk])
-json = Nostr.json Source.publish(maggie_profile)
+json = Nostrb.json Source.publish(maggie_profile)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 
@@ -148,11 +148,11 @@ puts "Marge requests recent profiles"
 f = Filter.new
 f.add_kinds(0)
 f.since(minutes: 30)
-json = Nostr.json Source.subscribe(marge[:pubkey], f)
+json = Nostrb.json Source.subscribe(marge[:pubkey], f)
 puts json
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 # marge contacts:
@@ -166,12 +166,12 @@ hsh = {
   maggie[:pubkey] => ['', 'maggie'],
 }
 marge_follows = marge[:source].follow_list(hsh).sign(marge[:sk])
-json = Nostr.json Source.publish(marge_follows)
+json = Nostrb.json Source.publish(marge_follows)
 puts json
 puts
 
 puts "Relay response:"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 puts "Homer requests Marge's follows"
@@ -179,12 +179,12 @@ f = Filter.new
 f.add_authors(marge[:pubkey])
 f.add_kinds(3)
 f.since(days: 30)
-json = Nostr.json Source.subscribe(homer[:pubkey], f)
+json = Nostrb.json Source.subscribe(homer[:pubkey], f)
 puts json
 puts
 
 puts "Relay response"
-relay.ingest(json).each { |r| puts Nostr.json(r) }
+relay.ingest(json).each { |r| puts Nostrb.json(r) }
 puts
 
 # homer contacts:
