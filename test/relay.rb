@@ -121,6 +121,7 @@ describe Server do
     expect(responses.length).must_equal 1
 
     resp = responses[0]
+    expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "OK"
     expect(resp[1]).must_equal Test::SIGNED.id
     expect(resp[2]).must_equal true
@@ -135,6 +136,7 @@ describe Server do
     expect(responses.length).must_equal 1
 
     resp = responses[0]
+    expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "NOTICE"
     expect(resp[1]).must_be_kind_of String
     expect(resp[1]).wont_be_empty
@@ -151,6 +153,7 @@ describe Server do
     expect(responses.length).must_equal 1
 
     resp = responses[0]
+    expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "NOTICE"
     expect(resp[1]).must_be_kind_of String
     expect(resp[1]).wont_be_empty
@@ -167,6 +170,7 @@ describe Server do
     expect(responses.length).must_equal 1
 
     resp = responses[0]
+    expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "NOTICE"
     expect(resp[1]).must_be_kind_of String
     expect(resp[1]).wont_be_empty
@@ -183,7 +187,7 @@ describe Server do
     expect(responses.length).must_equal 1
 
     resp = responses[0]
-
+    expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "OK"
     expect(resp[1]).must_equal hsh["id"]
     expect(resp[2]).must_equal false
@@ -202,7 +206,7 @@ describe Server do
     expect(responses.length).must_equal 1
 
     resp = responses[0]
-
+    expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "OK"
     expect(resp[1]).must_equal hsh["id"]
     expect(resp[2]).must_equal false
@@ -211,13 +215,74 @@ describe Server do
   end
 
   it "has multiple responses to REQ requets" do
+    # ingest 2 events (Source.publish)
+    # get a subscription request (Source.subscribe)
     # respond EVENT
     # respond EVENT
-    # ...
     # respond EOSE
+
+    s = Server.new
+    e1 = Event.new('one', pk: Test::PK).sign(Test::SK)
+    e2 = Event.new('two', pk: Test::PK).sign(Test::SK)
+    [e1, e2].each { |e|
+      responses = s.ingest(Nostr.json(Source.publish(e)))
+      expect(responses).must_be_kind_of Array
+      expect(responses.length).must_equal 1
+      resp = responses[0]
+      expect(resp).must_be_kind_of Array
+      expect(resp[0]).must_equal "OK"
+      expect(resp[1]).must_equal e.id
+      expect(resp[2]).must_equal true
+    }
+
+    # with no filters, nothing will match
+    sid = e1.pubkey
+    responses = s.ingest(Nostr.json(Source.subscribe(sid)))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+    resp = responses[0]
+    expect(resp).must_be_kind_of Array
+    expect(resp[0]).must_equal "EOSE"
+    expect(resp[1]).must_equal sid
+
+    # now add a filter based on pubkey
+    f = Filter.new
+    f.add_authors e1.pubkey
+
+    responses = s.ingest(Nostr.json(Source.subscribe(sid, f)))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 3
+
+    # remove EOSE and validate
+    eose = responses.pop
+    expect(eose).must_be_kind_of Array
+    expect(eose[0]).must_equal "EOSE"
+    expect(eose[1]).must_equal sid
+
+    responses.each { |event|
+      expect(event).must_be_kind_of Array
+      expect(event[0]).must_equal "EVENT"
+      expect(event[1]).must_equal sid
+      hsh = event[2]
+      expect(hsh).must_be_kind_of Hash
+      expect(SignedEvent.validate!(hsh)).must_equal hsh
+    }
+    expect(responses[0][2]).must_equal e1.to_h
+    expect(responses[1][2]).must_equal e2.to_h
   end
 
   it "has a single response to CLOSE requests" do
+    s = Server.new
+    sid = Test::EVENT.pubkey
+    responses = s.ingest(Nostr.json(Source.close(sid)))
+
     # respond CLOSED
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+    expect(resp).must_be_kind_of Array
+    expect(resp[0]).must_equal "CLOSED"
+    expect(resp[1]).must_equal sid
   end
 end
