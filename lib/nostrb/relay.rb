@@ -116,7 +116,7 @@ module Nostr
 
     # single response
     def handle_close(sid)
-      Server.closed(sid, "CLOSE requested")
+      Server.closed(sid, "reason: CLOSE requested")
     end
   end
 end
