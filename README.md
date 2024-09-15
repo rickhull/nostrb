@@ -78,7 +78,8 @@ typically a hash of the message.  But we want to hash more than just the
 content.  We need to include pubkey, kind, tags, and also a timestamp.
 
 1. Generate timestamp `created_at`
-2. Create serialization: `[pubkey, created_at, kind, tags, content]`
+2. Create serialization: `[version, pubkey, created_at, kind, tags, content]`
+   (version=0)
 3. Create SHA256 digest of the serialization, store as `id`
 4. Create signature `sig` by signing the digest with the secret key
 
