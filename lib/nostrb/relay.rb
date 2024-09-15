@@ -1,4 +1,5 @@
 require 'nostrb/event'
+require 'nostrb/filter'
 
 # per NIP-01
 
