@@ -81,27 +81,36 @@ module Nostr
     end
 
     # return an array of response
+    # filter1:
+    #   ids: [id1, id2]
+    #   authors: [pubkey1]
+    # filter2:
+    #   ids: [id3, id4]
+    #   authors: [pubkey2]
+
+    # run filter1
+    #   for any fields specified (ids, authors)
+    #     if any values match, the event is a match
+    #   all fields provided must match for the event to match
+    #     ids must have a match and authors must have a match
+
+    # run filter2 just like filter1
+    # the result set is the union of filter1 and filter2
+
     def handle_req(sid, *filters)
       responses = []
-      events = []
+      events = Set.new
       filters.each { |f|
         if f.authors.empty?
-          events += self.events
+          candidates = self.events
         else
-          f.authors.each { |pub|
-            events += self.events(pubkey: pub)
-          }
+          candidates = []
+          f.authors.each { |pub| candidates += self.events(pubkey: pub) }
         end
-      }
 
-      events.each { |h|
-        match = false
-        filters.each { |f|
-          next if match
-          match = f.match?(h)
-        }
-        responses << Server.event(sid, h) if match
+        events.merge(candidates.select { |h| f.match?(h) })
       }
+      responses = events.map { |h| Server.event(sid, h) }
       responses << Server.eose(sid)
     end
 
