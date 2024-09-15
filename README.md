@@ -93,7 +93,18 @@ serialization or digest will be invalid.
 ### Library Structure
 
 * `module Nostrb`: encapsulates this library; provides utility functions
-  * `class Event`: a basic Event with no handling for `created_at`, `id`, `sig`
-  * `class SignedEvent`: upon signing, wraps an Event with
-    `created_at`, `id`, `sig`
+  * `class Event`: a basic Event
+    * `content` *String*
+    * `kind` *Integer*
+    * `pubkey` *String, hex[64]*
+    * `tags` *Array[Array[String]]*
+  * `class SignedEvent`: upon signing, wraps an Event
+    * `created_at` *Integer*
+    * `id` *String, hex[64]*
+    * `sig` *String, hex[128]*
   * `class Source`: wraps a public key; provides methods for Event creation
+    * `text_note(content)` *standard post*
+    * `user_metadata(name:, about:, picture:)` *upload profile*
+    * `follow_list(pubkeys)` *who to follow*
+    * `deletion_request(explanation, event_ids)` *delete events*
+  * `class Server`: ingests Events and provides response logic for Nostr relays
