@@ -106,10 +106,8 @@ module Nostr
     # May raise implicitly: Nostr::SizeError, EncodingError, TypeError,
     #                       SchnorrSig::Error
     # Return a _completely validated_ hash
-    def self.verify(parsed, check_id: true)
-      hash = validate!(parsed)
-
-      id, pubkey, sig = hash["id"], hash["pubkey"], hash["sig"]
+    def self.verify(valid, check_id: true)
+      id, pubkey, sig = valid["id"], valid["pubkey"], valid["sig"]
 
       # extract binary values for signature verification
       digest = SchnorrSig.hex2bin id
@@ -121,8 +119,8 @@ module Nostr
         raise(SignatureCheck, sig)
       end
       # (optional) verify the id / digest
-      raise(IdCheck, id) if check_id and digest != SignedEvent.digest(hash)
-      hash
+      raise(IdCheck, id) if check_id and digest != SignedEvent.digest(valid)
+      valid
     end
 
     attr_reader :event, :created_at, :digest, :signature
