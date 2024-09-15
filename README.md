@@ -84,12 +84,21 @@ content.  We need to include pubkey, kind, tags, and also a timestamp.
 4. Create signature `sig` by signing the digest with the secret key
 
 So we will serialize the event including several fields,
-hash the serialization, and sign the hash.  Note that the timestamp is
-fundamentally **immutable**, so until an event is signed, it is somewhat
-incoherent to refer to its timestamp, serialization, or id.  We can always
-create and examine a *provisional* timestamp, serialization, or id.  But when
-signing time comes, a new timestamp will be set, and any previous
-serialization or digest will be invalid.
+hash the serialization, and sign the hash.  Note that the timestamp
+(`created_at`) is fundamentally **immutable**, so until an event is signed,
+it is somewhat incoherent to refer to its timestamp, serialization, or id.
+It's possible to create and examine a *provisional* timestamp, serialization,
+or id, but when signing time comes, a new timestamp will be set, and any
+previous serialization or digest will be invalid.
+
+### Client Requests
+
+Nostr clients have 3 fundamental requests
+
+* `publish(event)` *make a post*
+* `subscribe(subscription_id, filters)`
+  *request published events per filter(s)*
+* `close(subscription_id)` *enough events; close subscription*
 
 ### Library Structure
 
