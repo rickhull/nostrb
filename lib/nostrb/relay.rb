@@ -1,5 +1,6 @@
 require 'nostrb/event'
 require 'nostrb/filter'
+require 'set' # jruby wants this
 
 # per NIP-01
 
