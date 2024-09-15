@@ -1,28 +1,17 @@
 require 'nostrb/event'
+require_relative 'common.rb'
 require 'minitest/autorun'
 
 include Nostr
 
-$sk, $pk = SchnorrSig.keypair
-
-$parsed = {
-  "content" => "hello world",
-  "pubkey" => "18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
-  "kind" => 1,
-  "tags" => [],
-  "created_at" => 1725496781,
-  "id" => "7f6f1c7ee406a450b581c62754fa66ffaaff0504b40ced02a6d0fc3806f1d44b",
-  "sig" => "8bb25f403e90cbe83629098264327b56240a703820b26f440a348ae81a64ec490c18e61d2942fe300f26b93a1534a94406aec12f5a32272357263bea88fccfda"
-}
-
 describe Event do
   def text_note(content = '')
-    Event.new(content, kind: 1, pk: $pk)
+    Event.new(content, kind: 1, pk: Test::PK)
   end
 
   describe "class functions" do
     it "computes a 32 byte digest of a JSON serialization" do
-      a = SignedEvent.serialize($parsed)
+      a = SignedEvent.serialize(Test::HASH)
       d = Event.digest(a)
       expect(d).must_be_kind_of String
       expect(d.length).must_equal 32
@@ -37,14 +26,14 @@ describe Event do
     end
 
     it "requires a _kind_ integer, defaulting to 1" do
-      expect(Event.new(kind: 0, pk: $pk).kind).must_equal 0
-      expect(Event.new(pk: $pk).kind).must_equal 1
+      expect(Event.new(kind: 0, pk: Test::PK).kind).must_equal 0
+      expect(Event.new(pk: Test::PK).kind).must_equal 1
     end
 
     it "requires a public key in binary format" do
-      expect(text_note().pk).must_equal $pk
+      expect(Test::EVENT.pk).must_equal Test::PK
       expect {
-        Event.new(kind: 1, pk: SchnorrSig.bin2hex($pk))
+        Event.new(kind: 1, pk: SchnorrSig.bin2hex(Test::PK))
       }.must_raise EncodingError
       expect {
         Event.new(kind: 1, pk: "0123456789abcdef".b)
@@ -67,13 +56,13 @@ describe Event do
   end
 
   it "has a pubkey in hex format" do
-    pubkey = text_note().pubkey
+    pubkey = Test::EVENT.pubkey
     expect(pubkey).must_be_kind_of String
     expect(pubkey.length).must_equal 64
   end
 
   it "requires a timestamp to create a SHA256 digest" do
-    e = text_note()
+    e = Test::EVENT
     d = e.digest(Time.now.to_i)
     expect(d).must_be_kind_of String
     expect(d.length).must_equal 32
@@ -81,7 +70,7 @@ describe Event do
   end
 
   it "provides a SignedEvent when signed with a secret key" do
-    expect(text_note().sign($sk)).must_be_kind_of SignedEvent
+    expect(Test::EVENT.sign(Test::SK)).must_be_kind_of SignedEvent
   end
 
   describe "event tags" do
@@ -109,7 +98,7 @@ describe Event do
 
     it "references prior events" do
       p = text_note()
-      s = p.sign($sk)
+      s = p.sign(Test::SK)
 
       e = text_note()
       e.ref_event(s.id)
@@ -121,7 +110,7 @@ describe Event do
 
     it "references known public keys" do
       e = text_note()
-      pubkey = SchnorrSig.bin2hex $pk
+      pubkey = SchnorrSig.bin2hex Test::PK
       e.ref_pubkey(pubkey)
       expect(e.tags).wont_be_empty
       expect(e.tags.length).must_equal 1
@@ -133,12 +122,12 @@ end
 
 describe SignedEvent do
   def signed_note(content = '')
-    Event.new(content, kind: 1, pk: $pk).sign($sk)
+    Event.new(content, kind: 1, pk: Test::PK).sign(Test::SK)
   end
 
   describe "class functions" do
     it "validates a JSON parsed hash" do
-      h = SignedEvent.validate!($parsed)
+      h = SignedEvent.validate!(Test::HASH)
       expect(h).must_be_kind_of Hash
       %w[id pubkey kind content tags created_at sig].each { |k|
         expect(h.key?(k)).must_equal true
@@ -146,20 +135,20 @@ describe SignedEvent do
     end
 
     it "verifies a JSON parsed hash" do
-      h = SignedEvent.verify($parsed)
+      h = SignedEvent.verify(Test::HASH)
       expect(h).must_be_kind_of Hash
     end
 
     it "serializes a JSON parsed hash" do
-      a = SignedEvent.serialize($parsed)
+      a = SignedEvent.serialize(Test::HASH)
       expect(a).must_be_kind_of Array
       expect(a.length).must_equal 6
     end
 
     it "digests a hash JSON parsed hash, which it will serialize" do
-      a = SignedEvent.serialize($parsed)
+      a = SignedEvent.serialize(Test::HASH)
       d = Event.digest(a)
-      d2 = SignedEvent.digest($parsed)
+      d2 = SignedEvent.digest(Test::HASH)
       expect(d2).must_equal d
     end
   end

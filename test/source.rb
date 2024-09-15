@@ -1,26 +1,25 @@
 require 'nostrb/source'
+require_relative 'common'
 require 'minitest/autorun'
 
 include Nostr
 
 describe Source do
-  $sk, $pk = SchnorrSig.keypair
-
   describe "instantiation" do
     it "wraps a binary pubkey" do
-      s = Source.new($pk)
+      s = Source.new(Test::PK)
       expect(s).must_be_kind_of Source
-      expect(s.pk).must_equal $pk
+      expect(s.pk).must_equal Test::PK
 
       expect {
-        Source.new(SchnorrSig.bin2hex($pk))
+        Source.new(SchnorrSig.bin2hex(Test::PK))
       }.must_raise EncodingError
     end
   end
 
   describe "event creation" do
     it "creates text_note events" do
-      s = Source.new($pk)
+      s = Source.new(Test::PK)
       e = s.text_note('hello world')
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 1
@@ -28,7 +27,7 @@ describe Source do
     end
 
     it "creates user_metadata events" do
-      s = Source.new($pk)
+      s = Source.new(Test::PK)
       e = s.user_metadata(name: 'Bob Loblaw',
                           about: "Bob Loblaw's Law Blog",
                           picture: "https://localhost/me.jpg")
@@ -46,7 +45,7 @@ describe Source do
         SchnorrSig.bin2hex(Random.bytes(32)) => ['baz', 'quux'],
         SchnorrSig.bin2hex(Random.bytes(32)) => ['asdf', '123'],
       }
-      s = Source.new($pk)
+      s = Source.new(Test::PK)
       e = s.follow_list(pubkey_hsh)
       expect(e).must_be_kind_of Event
       expect(e.kind).must_equal 3
