@@ -1,4 +1,5 @@
 require 'nostrb/relay'
+require 'nostrb/source'
 require 'minitest/autorun'
 
 include Nostr
@@ -6,10 +7,15 @@ include Nostr
 TYPES = ["EVENT", "OK", "EOSE", "CLOSED", "NOTICE"]
 
 $sk, $pk = SchnorrSig.keypair
+$src = Source.new($pk)
 
 describe Server do
   def text_note(content = '')
-    Event.new(content, pk: $pk).sign($sk)
+    $src.text_note(content)
+  end
+
+  def signed_note(content = '')
+    text_note().sign($sk)
   end
 
   def valid_response!(resp)
@@ -23,7 +29,7 @@ describe Server do
 
   describe "class functions" do
     it "has an EVENT response, given subscriber_id and requested event" do
-      event = text_note()
+      event = signed_note()
       sid = '1234'
       resp = Server.event(sid, event)
       valid_response!(resp)
@@ -34,7 +40,7 @@ describe Server do
     end
 
     it "has an OK response, given an event_id" do
-      event = text_note()
+      event = signed_note()
 
       # positive ok
       resp = Server.ok(event.id)
@@ -92,7 +98,7 @@ describe Server do
 
       e = Nostr::Error.new("things")
       expect(e).must_be_kind_of Exception
-      expect(Server.message(e)).must_equal "Nostr::Error: things"
+      expect(Server.message(e)).must_equal "Error: things"
     end
 
     it "uses NOTICE to return errors" do
@@ -110,12 +116,90 @@ describe Server do
   end
 
   it "stores inbound events" do
+    note = signed_note()
+    s = Server.new
+    s.ingest(Nostr.json(Source.publish(note)))
+    events = s.events
+    expect(events).must_be_kind_of Array
+    expect(events.length).must_equal 1
+    hsh = events[0]
+    expect(hsh).must_be_kind_of Hash
+    expect(hsh).must_equal note.to_h
   end
 
   it "has a single response to EVENT requests" do
-    # respond error / NOTICE
-    # respond OK: false
+    note = signed_note()
+    valid_json = Nostr.json(Source.publish(note))
+    s = Server.new
+
     # respond OK: true
+    responses = s.ingest(valid_json)
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+    expect(resp[0]).must_equal "OK"
+    expect(resp[1]).must_equal note.id
+    expect(resp[2]).must_equal true
+
+    # invalid request type: respond error / NOTICE
+    ary = Nostr.parse(valid_json)
+    ary[0] = ary[0].downcase
+    responses = s.ingest(Nostr.json(ary))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+    expect(resp[0]).must_equal "NOTICE"
+    expect(resp[1]).must_be_kind_of String
+    expect(resp[1]).wont_be_empty
+
+    # event missing "id": respond error / NOTICE
+    ary = Nostr.parse(valid_json)
+    hsh = ary[1]
+    hsh.delete("id")
+    ary[1] = hsh
+    responses = s.ingest(Nostr.json(ary))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+    expect(resp[0]).must_equal "NOTICE"
+    expect(resp[1]).must_be_kind_of String
+    expect(resp[1]).wont_be_empty
+
+    # short signature: response error / NOTICE
+    ary = Nostr.parse(valid_json)
+    hsh = ary[1]
+    hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(32))
+    ary[1] = hsh
+    responses = s.ingest(Nostr.json(ary))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+    expect(resp[0]).must_equal "NOTICE"
+    expect(resp[1]).must_be_kind_of String
+    expect(resp[1]).wont_be_empty
+
+    # invalid signature, respond OK: false
+    ary = Nostr.parse(valid_json)
+    hsh = ary[1]
+    hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
+    ary[1] = hsh
+    responses = s.ingest(Nostr.json(ary))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+
+    expect(resp[0]).must_equal "OK"
+    expect(resp[1]).must_equal hsh["id"]
+    expect(resp[2]).must_equal false
+    expect(resp[3]).must_be_kind_of String
+    expect(resp[3]).wont_be_empty
+
+    # respond OK: false
   end
 
   it "has multiple responses to REQ requets" do

@@ -11,8 +11,11 @@ module Nostr
     def self.eose(sid) = ["EOSE", Nostr.sid!(sid)]
     def self.closed(sid, msg) = ["CLOSED", Nostr.sid!(sid), Nostr.help!(msg)]
     def self.notice(msg) = ["NOTICE", Nostr.txt!(msg)]
-    def self.message(excp) = format("%s: %s", excp.class, excp.message)
     def self.error(e) = notice(message(e))
+
+    def self.message(excp)
+      format("%s: %s", excp.class.name.split('::').last, excp.message)
+    end
 
     def initialize
       @events = {} # { pubkey => [event_hash] }
@@ -32,7 +35,7 @@ module Nostr
       when 'CLOSE'
         [handle_close(Nostr.sid!(a[1]))]
       else
-        raise 'unexpected'
+        [Server.notice("unexpected: #{a[0].inspect}")]
       end
     end
 
@@ -50,15 +53,15 @@ module Nostr
     # return a single response
     def handle_event(hsh)
       begin
-        hsh = SignedEvent.validate!(hsh) # only raises Nostr::Error
+        hsh = SignedEvent.validate!(hsh)
       rescue Nostr::Error, KeyError, RuntimeError => e
-        Server.error(e)
+        return Server.error(e)
       end
 
       eid = hsh.fetch('id')
 
       begin
-        add_event(hsh)
+        add_event(SignedEvent.verify(hsh))
         Server.ok(eid)
       rescue SignedEvent::Error => e
         Server.ok(eid, Server.message(e), ok: false)
