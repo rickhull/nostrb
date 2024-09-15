@@ -56,7 +56,7 @@ module Nostrb
   def self.sid!(str) = txt!(str, max: 64)
   def self.sig!(str) = txt!(str, length: 128)
 
-  HELP_MSG = /\A[a-zA-Z\-]+: [a-zA-Z0-9].+\z/
+  HELP_MSG = /\A[a-zA-Z0-9\-_]+: [[:print:]]*\z/
 
   def self.help!(str)
     raise(FormatError, str) unless txt!(str, max: 1024).match HELP_MSG
