@@ -133,7 +133,13 @@ module Nostr
       @signature = SchnorrSig.sign(Nostr.key!(sk), @digest)
     end
 
+    def content = @event.content
+    def pubkey = @event.pubkey
+    def kind = @event.kind
+    def tags = @event.tags
     def to_s = @event.to_s
+    def serialize = @event.serialize(@created_at)
+
     def id = SchnorrSig.bin2hex(@digest)
     def sig = SchnorrSig.bin2hex(@signature)
 
