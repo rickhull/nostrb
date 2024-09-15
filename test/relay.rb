@@ -8,16 +8,10 @@ TYPES = ["EVENT", "OK", "EOSE", "CLOSED", "NOTICE"]
 
 $sk, $pk = SchnorrSig.keypair
 $src = Source.new($pk)
+$signed = $src.text_note('testing').sign($sk)
+$json = Nostr.json(Source.publish($signed))
 
 describe Server do
-  def text_note(content = '')
-    $src.text_note(content)
-  end
-
-  def signed_note(content = '')
-    text_note().sign($sk)
-  end
-
   def valid_response!(resp)
     expect(resp).must_be_kind_of Array
     expect(resp.length).must_be :>=, 2
@@ -29,9 +23,8 @@ describe Server do
 
   describe "class functions" do
     it "has an EVENT response, given subscriber_id and requested event" do
-      event = signed_note()
       sid = '1234'
-      resp = Server.event(sid, event)
+      resp = Server.event(sid, $signed)
       valid_response!(resp)
       expect(resp[0]).must_equal "EVENT"
       expect(resp[1]).must_equal sid
@@ -40,28 +33,26 @@ describe Server do
     end
 
     it "has an OK response, given an event_id" do
-      event = signed_note()
-
       # positive ok
-      resp = Server.ok(event.id)
+      resp = Server.ok($signed.id)
       valid_response!(resp)
       expect(resp[0]).must_equal "OK"
-      expect(resp[1]).must_equal event.id
+      expect(resp[1]).must_equal $signed.id
       expect(resp[2]).must_equal true
       expect(resp[3]).must_be_kind_of String # empty by default
 
       # negative ok
-      resp = Server.ok(event.id, "error: testing", ok: false)
+      resp = Server.ok($signed.id, "error: testing", ok: false)
       valid_response!(resp)
       expect(resp[0]).must_equal "OK"
-      expect(resp[1]).must_equal event.id
+      expect(resp[1]).must_equal $signed.id
       expect(resp[2]).must_equal false
       expect(resp[3]).must_be_kind_of String
       expect(resp[3]).wont_be_empty
 
       # ok:false requires nonempty message
-      expect { Server.ok(event.id, "", ok: false) }.must_raise FormatError
-      expect { Server.ok(event.id, ok: false) }.must_raise FormatError
+      expect { Server.ok($signed.id, "", ok: false) }.must_raise FormatError
+      expect { Server.ok($signed.id, ok: false) }.must_raise FormatError
     end
 
     it "has an EOSE response to conclude a series of EVENT responses" do
@@ -116,36 +107,33 @@ describe Server do
   end
 
   it "stores inbound events" do
-    note = signed_note()
     s = Server.new
-    s.ingest(Nostr.json(Source.publish(note)))
+    s.ingest(Nostr.json(Source.publish($signed)))
     events = s.events
     expect(events).must_be_kind_of Array
     expect(events.length).must_equal 1
     hsh = events[0]
     expect(hsh).must_be_kind_of Hash
-    expect(hsh).must_equal note.to_h
+    expect(hsh).must_equal $signed.to_h
   end
 
   it "has a single response to EVENT requests" do
-    note = signed_note()
-    valid_json = Nostr.json(Source.publish(note))
-    s = Server.new
-
     # respond OK: true
-    responses = s.ingest(valid_json)
+    responses = Server.new.ingest($json)
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
     resp = responses[0]
     expect(resp[0]).must_equal "OK"
-    expect(resp[1]).must_equal note.id
+    expect(resp[1]).must_equal $signed.id
     expect(resp[2]).must_equal true
+  end
 
+  it "rejects unknown request types" do
     # invalid request type: respond error / NOTICE
-    ary = Nostr.parse(valid_json)
+    ary = Nostr.parse($json)
     ary[0] = ary[0].downcase
-    responses = s.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostr.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -153,13 +141,15 @@ describe Server do
     expect(resp[0]).must_equal "NOTICE"
     expect(resp[1]).must_be_kind_of String
     expect(resp[1]).wont_be_empty
+  end
 
+  it "rejects events with missing fields" do
     # event missing "id": respond error / NOTICE
-    ary = Nostr.parse(valid_json)
+    ary = Nostr.parse($json)
     hsh = ary[1]
     hsh.delete("id")
     ary[1] = hsh
-    responses = s.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostr.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -167,13 +157,15 @@ describe Server do
     expect(resp[0]).must_equal "NOTICE"
     expect(resp[1]).must_be_kind_of String
     expect(resp[1]).wont_be_empty
+  end
 
+  it "rejects events with invalid format" do
     # short signature: response error / NOTICE
-    ary = Nostr.parse(valid_json)
+    ary = Nostr.parse($json)
     hsh = ary[1]
     hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(32))
     ary[1] = hsh
-    responses = s.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostr.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -181,13 +173,15 @@ describe Server do
     expect(resp[0]).must_equal "NOTICE"
     expect(resp[1]).must_be_kind_of String
     expect(resp[1]).wont_be_empty
+  end
 
+  it "rejects events with invalid signature" do
     # invalid signature, respond OK: false
-    ary = Nostr.parse(valid_json)
+    ary = Nostr.parse($json)
     hsh = ary[1]
     hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
     ary[1] = hsh
-    responses = s.ingest(Nostr.json(ary))
+    responses = Server.new.ingest(Nostr.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -198,8 +192,25 @@ describe Server do
     expect(resp[2]).must_equal false
     expect(resp[3]).must_be_kind_of String
     expect(resp[3]).wont_be_empty
+  end
 
-    # respond OK: false
+  it "rejects events with invalid id" do
+    # invalid id, respond OK: false
+    ary = Nostr.parse($json)
+    hsh = ary[1]
+    hsh["id"] = SchnorrSig.bin2hex(Random.bytes(32))
+    ary[1] = hsh
+    responses = Server.new.ingest(Nostr.json(ary))
+    expect(responses).must_be_kind_of Array
+    expect(responses.length).must_equal 1
+
+    resp = responses[0]
+
+    expect(resp[0]).must_equal "OK"
+    expect(resp[1]).must_equal hsh["id"]
+    expect(resp[2]).must_equal false
+    expect(resp[3]).must_be_kind_of String
+    expect(resp[3]).wont_be_empty
   end
 
   it "has multiple responses to REQ requets" do
