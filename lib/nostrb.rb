@@ -1,14 +1,18 @@
-require 'schnorr_sig'
-require 'json'
-require 'digest'
+require 'digest'       # stdlib
+require 'schnorr_sig'  # gem
+begin
+  require 'nostrb/oj'    # try Oj gem
+rescue LoadError
+  require 'nostrb/json'  # fall back to stdlib
+end
 
 module Nostrb
   class Error < RuntimeError; end
   class SizeError < Error; end
   class FormatError < Error; end
 
-  #######################################
-  # Type Checking and Enforcement
+  # return 32 bytes binary
+  def self.digest(str) = Digest::SHA256.digest(str)
 
   def self.check!(val, cls)
     val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
@@ -66,32 +70,4 @@ module Nostrb
   def self.tags!(ary)
     ary!(ary, max: 9999).each { |a| ary!(a, max: 99).each { |s| txt!(s) } }
   end
-
-  #####################################
-  # JSON I/O
-
-  # per NIP-01
-  JSON_OPTIONS = {
-    allow_nan: false,
-    # note, while events only nest 3 deep, the wire format is 4 deep
-    # max_nesting: 3,
-    max_nesting: 4,
-    script_safe: false,
-    ascii_only: false,
-    array_nl: '',
-    object_nl: '',
-    indent: '',
-    space: '',
-    space_before: '',
-  }
-
-  def self.parse(json) = JSON.parse(json, **JSON_OPTIONS)
-
-  def self.json(object) = JSON.generate(object, **JSON_OPTIONS)
-
-  ####################################
-  # Utilities
-
-  # return 32 bytes binary
-  def self.digest(str) = Digest::SHA256.digest(str)
 end

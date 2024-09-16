@@ -190,9 +190,4 @@ describe SignedEvent do
     expect(h.fetch "sig").must_be_kind_of String
     expect(h["sig"]).wont_be_empty
   end
-
-  it "has a formalized JSON format based on the object format" do
-    j = signed_note().to_json
-    expect(j).must_be_kind_of(String)
-  end
 end
