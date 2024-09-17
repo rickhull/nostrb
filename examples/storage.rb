@@ -4,9 +4,7 @@ require 'nostrb/event'
 include Nostrb
 
 # setup database
-setup = Setup.new
-setup.create_tables
-puts setup.report
+puts Setup.new.setup
 puts
 
 # create event
