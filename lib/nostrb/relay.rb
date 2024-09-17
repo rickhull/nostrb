@@ -3,7 +3,15 @@ require 'nostrb/filter'
 require 'nostrb/sqlite'
 require 'set' # jruby wants this
 
-# per NIP-01
+# Kind:
+#   0,3: replaceable -- relay stores only the last message from pubkey
+#   2: deprecated
+#   1,4..44,1000..9999: regular -- relay stores all
+#   10_000..19_999: replaceable -- relay stores latest(pubkey, kind)
+#   20_000..29_999: ephemeral -- relay doesn't store
+#   30_000..39_999: parameterized replaceable -- latest(pubkey, kind, dtag)
+
+# for replaceable events with same timestamp, lowest id wins
 
 module Nostrb
   class Server
@@ -54,7 +62,24 @@ module Nostrb
       eid = hsh.fetch('id')
 
       begin
-        @writer.add_event(SignedEvent.verify(hsh))
+        hsh = SignedEvent.verify(hsh)
+        case hsh['kind']
+        when 0, 3, (10_000..19_999)
+          # replaceable, store latest (pubkey, kind)
+          @writer.add_r_event(hsh)
+        when 1, (4..44), (1000..9999)
+          # regular, store all
+          @writer.add_event(hsh)
+        when 20_000..29_999
+          # ephemeral, don't store
+        when 30_000..30_999
+          # parameterized replaceable, store latest (pubkey, kind, dtag)
+          # TODO: implement dtag stuff
+          @writer.add_r_event(hsh)
+        else
+          raise(SignedEvent::Error, "kind: #{hsh['kind']}")
+        end
+
         Server.ok(eid)
       rescue SignedEvent::Error => e
         Server.ok(eid, Server.message(e), ok: false)
@@ -84,6 +109,10 @@ module Nostrb
       responses = []
       @reader.select_events.each_hash { |h|
         h = @reader.add_tags(h)
+        responses << Server.event(sid, h) if filters.any? { |f| f.match? h }
+      }
+      @reader.select_r_events.each_hash { |h|
+        h = @reader.add_r_tags(h)
         responses << Server.event(sid, h) if filters.any? { |f| f.match? h }
       }
       responses << Server.eose(sid)

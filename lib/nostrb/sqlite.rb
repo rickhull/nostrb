@@ -199,33 +199,63 @@ module Nostrb
   end
 
   class Setup < Storage
+    def setup
+      drop_tables
+      create_tables
+      create_indices
+      report
+    end
+
     def drop_tables
-      %w[events tags subscriptions].each { |tbl|
+      %w[events tags r_events r_tags].each { |tbl|
         @db.execute "DROP TABLE IF EXISTS #{tbl}" rescue nil
       }
     end
 
     def create_tables
-      self.drop_tables
-      @db.execute "CREATE TABLE events (content TEXT NOT NULL,
-                                        kind INTEGER NOT NULL,
-                                        pubkey BLOB NOT NULL,
-                                        created_at INTEGER NOT NULL,
-                                        id BLOB PRIMARY KEY NOT NULL,
-                                        sig BLOB NOT NULL)"
+      @db.execute <<SQL
+CREATE TABLE events (content TEXT NOT NULL,
+                     kind INTEGER NOT NULL,
+                     pubkey BLOB NOT NULL,
+                     created_at INTEGER NOT NULL,
+                     id BLOB PRIMARY KEY NOT NULL,
+                     sig BLOB NOT NULL)
+SQL
+
+      @db.execute <<SQL
+CREATE TABLE tags (event_id    BLOB REFERENCES events (id)
+                               ON DELETE CASCADE NOT NULL,
+                   created_at  INTEGER NOT NULL,
+                   tag         TEXT NOT NULL,
+                   value       TEXT NOT NULL,
+                   json        TEXT NOT NULL)
+SQL
+
+      @db.execute <<SQL
+CREATE TABLE r_events (content TEXT NOT NULL,
+                      kind INTEGER NOT NULL,
+                      pubkey BLOB NOT NULL,
+                      created_at INTEGER NOT NULL,
+                      id BLOB NOT NULL,
+                      sig BLOB NOT NULL,
+                      PRIMARY KEY (pubkey, kind))
+SQL
+
+      @db.execute <<SQL
+CREATE TABLE r_tags (r_pubkey    BLOB NOT NULL,
+                     r_kind      INTEGER NOT NULL,
+                     tag         TEXT NOT NULL,
+                     value       TEXT NOT NULL,
+                     json        TEXT NOT NULL,
+                     FOREIGN KEY (r_pubkey, r_kind)
+                      REFERENCES r_events (pubkey, kind))
+SQL
+    end
+
+    def create_indices
       @db.execute "CREATE INDEX idx_events_pubkey ON events (pubkey)"
-      # @db.execute "CREATE INDEX idx_events_kind ON events (kind)"
       @db.execute "CREATE INDEX idx_events_created_at ON events (created_at)"
-
-      @db.execute "CREATE TABLE tags (event_id    BLOB REFERENCES
-                                      events (id) ON DELETE CASCADE NOT NULL,
-                                      created_at  INTEGER NOT NULL,
-                                      tag         TEXT NOT NULL,
-                                      value       TEXT NOT NULL,
-                                      json        TEXT NOT NULL)"
       @db.execute "CREATE INDEX idx_tags_created_at ON tags (created_at)"
-
-      @db.execute "CREATE TABLE subscriptions (id TEXT PRIMARY KEY NOT NULL)"
     end
   end
 
@@ -235,6 +265,10 @@ module Nostrb
     def initialize(filename = FILENAME, **kwargs)
       super(filename, **kwargs.merge(readonly: true))
     end
+
+    #
+    # Regular Events
+    #
 
     def select_events
       @select_events ||= @db.prepare("SELECT content, kind, pubkey,
@@ -251,9 +285,40 @@ module Nostrb
       @select_tags.execute(event_id: event_id, created_at: created_at)
     end
 
+    # update hash with tags
     def add_tags(hash)
       tags = select_tags(event_id: hash.fetch("id"),
                          created_at: hash.fetch("created_at"))
+      hash["tags"] = []
+      tags.each_hash { |h|
+        hash["tags"] << Nostrb.parse(h.fetch("json"))
+      }
+      hash
+    end
+
+    #
+    # Replaceable Events
+    #
+
+    def select_r_events
+      @select_r_events ||= @db.prepare("SELECT content, kind, pubkey,
+                                               created_at, id, sig
+                                          FROM r_events")
+      @select_r_events.execute
+    end
+
+    def select_r_tags(pubkey:, kind:)
+      @select_r_tags ||= @db.prepare("SELECT tag, value, json
+                                        FROM r_tags
+                                       WHERE r_pubkey = :pubkey
+                                         AND r_kind = :kind")
+      @select_r_tags.execute(pubkey: pubkey, kind: kind)
+    end
+
+    # update hash with r_tags
+    def add_r_tags(hash)
+      tags = select_r_tags(pubkey: hash.fetch('pubkey'),
+                           kind: hash.fetch('kind'))
       hash["tags"] = []
       tags.each_hash { |h|
         hash["tags"] << Nostrb.parse(h.fetch("json"))
@@ -279,6 +344,26 @@ module Nostrb
                          tag: a[0],
                          value: a[1],
                          json: Nostrb.json(a))
+      }
+    end
+
+    # add replaceable event
+    def add_r_event(valid)
+      @add_r_event ||=
+        @db.prepare("INSERT OR REPLACE INTO r_events
+                                     VALUES (:content, :kind, :pubkey,
+                                             :created_at, :id, :sig)")
+      @add_rtag ||= @db.prepare("INSERT INTO r_tags
+                                      VALUES (:r_pubkey, :r_kind,
+                                              :tag, :value, :json)")
+      tags = valid.delete("tags")
+      @add_r_event.execute(valid)
+      tags.each { |a|
+        @add_rtag.execute(r_pubkey: valid.fetch('pubkey'),
+                          r_kind: valid.fetch('kind'),
+                          tag: a[0],
+                          value: a[1],
+                          json: Nostrb.json(a))
       }
     end
   end
