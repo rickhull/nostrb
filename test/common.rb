@@ -3,8 +3,14 @@ require 'nostrb/event'
 module Nostrb
   module Test
     SK, PK = SchnorrSig.keypair
+
+    def self.new_event(content = 'testing')
+      Event.new(content, pk: PK).sign(SK)
+    end
+
     EVENT = Event.new('testing', pk: PK)
     SIGNED = EVENT.sign(SK)
+
     HASH = {
       "content" => "hello world",
       "pubkey" => "18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
