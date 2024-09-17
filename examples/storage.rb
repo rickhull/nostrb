@@ -1,6 +1,5 @@
 require 'nostrb/sqlite'
 require 'nostrb/event'
-require 'pry'
 
 include Nostrb
 
@@ -60,5 +59,3 @@ rs.each_hash { |h|
 # compare to original
 puts "Faithful retrieval: #{hsh == e2.to_h ? 'SUCCESS' : 'FAIL'}"
 puts
-
-binding.pry
