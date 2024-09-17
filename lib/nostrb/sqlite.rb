@@ -213,19 +213,18 @@ module Nostrb
                                         created_at INTEGER NOT NULL,
                                         id BLOB PRIMARY KEY NOT NULL,
                                         sig BLOB NOT NULL)"
-
-      # create index on pubkey, kind, created_at
       @db.execute "CREATE INDEX idx_events_pubkey ON events (pubkey)"
-      @db.execute "CREATE INDEX idx_events_kind ON events (kind)"
+      # @db.execute "CREATE INDEX idx_events_kind ON events (kind)"
       @db.execute "CREATE INDEX idx_events_created_at ON events (created_at)"
 
-      # primary key: (event_id, tag)
       @db.execute "CREATE TABLE tags (event_id    BLOB REFERENCES
                                       events (id) ON DELETE CASCADE NOT NULL,
+                                      created_at  INTEGER NOT NULL,
                                       tag         TEXT NOT NULL,
                                       value       TEXT NOT NULL,
-                                      json        TEXT NOT NULL,
-                     CONSTRAINT       tags_pkey   PRIMARY KEY (event_id, tag))"
+                                      json        TEXT NOT NULL)"
+      @db.execute "CREATE INDEX idx_tags_created_at ON tags (created_at)"
+
       @db.execute "CREATE TABLE subscriptions (id TEXT PRIMARY KEY NOT NULL)"
     end
   end
@@ -244,15 +243,17 @@ module Nostrb
       @select_events.execute
     end
 
-    def select_tags(event_id)
+    def select_tags(event_id:, created_at:)
       @select_tags ||= @db.prepare("SELECT tag, value, json
                                       FROM tags
-                                     WHERE event_id = :event_id")
-      @select_tags.execute(event_id: event_id)
+                                     WHERE event_id = :event_id
+                                       AND created_at = :created_at")
+      @select_tags.execute(event_id: event_id, created_at: created_at)
     end
 
     def add_tags(hash)
-      tags = select_tags(hash.fetch("id"))
+      tags = select_tags(event_id: hash.fetch("id"),
+                         created_at: hash.fetch("created_at"))
       hash["tags"] = []
       tags.each_hash { |h|
         hash["tags"] << Nostrb.parse(h.fetch("json"))
@@ -268,11 +269,13 @@ module Nostrb
                                        VALUES (:content, :kind, :pubkey,
                                                :created_at, :id, :sig)")
       @add_tag ||= @db.prepare("INSERT INTO tags
-                                     VALUES (:event_id, :tag, :value, :json)")
+                                     VALUES (:event_id, :created_at,
+                                             :tag, :value, :json)")
       tags = valid.delete("tags")
       @add_event.execute(valid)
       tags.each { |a|
         @add_tag.execute(event_id: valid.fetch('id'),
+                         created_at: valid.fetch('created_at'),
                          tag: a[0],
                          value: a[1],
                          json: Nostrb.json(a))
