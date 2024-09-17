@@ -1,5 +1,6 @@
 require 'nostrb/event'
 require 'nostrb/filter'
+require 'nostrb/sqlite'
 require 'set' # jruby wants this
 
 # per NIP-01
@@ -19,8 +20,9 @@ module Nostrb
       format("%s: %s", excp.class.name.split('::').last, excp.message)
     end
 
-    def initialize
-      @events = {} # { pubkey => [event_hash] }
+    def initialize(db_filename = Storage::FILENAME)
+      @reader = Reader.new(db_filename)
+      @writer = Writer.new(db_filename)
     end
 
     # accepts a single json array
@@ -41,17 +43,6 @@ module Nostrb
       end
     end
 
-    # update @events, keyed by pubkey
-    def add_event(hsh)
-      pubkey = hsh.fetch "pubkey"
-      if @events[pubkey]
-        @events[pubkey] << hsh
-      else
-        @events[pubkey] = [hsh]
-      end
-      self
-    end
-
     # return a single response
     def handle_event(hsh)
       begin
@@ -63,22 +54,12 @@ module Nostrb
       eid = hsh.fetch('id')
 
       begin
-        add_event(SignedEvent.verify(hsh))
+        @writer.add_event(SignedEvent.verify(hsh))
         Server.ok(eid)
       rescue SignedEvent::Error => e
         Server.ok(eid, Server.message(e), ok: false)
       rescue Nostrb::Error, KeyError, RuntimeError => e
         Server.error(e)
-      end
-    end
-
-    # return an array of events, matching pubkey if provided
-    def events(pubkey: nil)
-      if !pubkey.nil?
-        return [] unless (ary = @events[pubkey])
-        ary
-      else
-        @events.values.flatten
       end
     end
 
@@ -101,18 +82,10 @@ module Nostrb
 
     def handle_req(sid, *filters)
       responses = []
-      events = Set.new
-      filters.each { |f|
-        if f.authors.empty?
-          candidates = self.events
-        else
-          candidates = []
-          f.authors.each { |pub| candidates += self.events(pubkey: pub) }
-        end
-
-        events.merge(candidates.select { |h| f.match?(h) })
+      @reader.select_events.each_hash { |h|
+        h = @reader.add_tags(h)
+        responses << Server.event(sid, h) if filters.any? { |f| f.match? h }
       }
-      responses = events.map { |h| Server.event(sid, h) }
       responses << Server.eose(sid)
     end
 
