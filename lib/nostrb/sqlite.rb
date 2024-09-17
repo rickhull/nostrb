@@ -8,23 +8,26 @@ module Nostrb
         'synchronous' => %w[off normal full],
         'temp_store' => %w[default file memory],
       }
-      READONLY = %w[data_version freelist_count page_count]
-      SCALAR =
-        %w[application_id analysis_limit auto_vacuum automatic_index
-           busy_timeout cache_size cache_spill cell_size_check
-           checkpoint_fullfsync defer_foreign_keys encoding foreign_keys
-           fullfsync hard_heap_limit ignore_check_constraints journal_mode
-           journal_size_limit locking_mode max_page_count mmap_size page_size
-           query_only read_uncommitted recursive_triggers
-           reverse_unordered_selects secure_delete soft_heap_limit synchronous
-           temp_store threads trusted_schema user_version wal_autocheckpoint]
 
-      # debug: parser_trace schema_version stats vdbe_* writable_schema
-      # legacy: legacy_alter_table legacy_file_format
+      RO = %w[data_version freelist_count page_count]
+      RW = %w[application_id analysis_limit auto_vacuum automatic_index
+              busy_timeout cache_size cache_spill cell_size_check
+              checkpoint_fullfsync defer_foreign_keys encoding foreign_keys
+              fullfsync hard_heap_limit ignore_check_constraints journal_mode
+              journal_size_limit locking_mode max_page_count mmap_size
+              page_size query_only read_uncommitted recursive_triggers
+              reverse_unordered_selects secure_delete soft_heap_limit
+              synchronous temp_store threads trusted_schema user_version
+              wal_autocheckpoint]
+      SCALAR = (RO + RW).sort
+
+      #      debug: parser_trace schema_version stats vdbe_* writable_schema
+      #     legacy: legacy_alter_table legacy_file_format
       # deprecated: case_sensitive_like count_changes data_store_directory
       #             default_cache_size empty_result_callbacks full_column_names
       #             short_column_names temp_store_directory
 
+      # either no args (nil) or a single arg (symbol)
       REPORT = {
         compile_options: nil,
         # list
@@ -43,7 +46,7 @@ module Nostrb
         table_xinfo: :table_name,
       }
 
-      # either no args (nil) or a single arg (symbol)
+      # either no args (nil) or an optional single arg (symbol)
       COMMAND = {
         # checks
         foreign_key_check: :optional,  # report
@@ -69,14 +72,7 @@ module Nostrb
         get(pragma)
       end
 
-      def report(pragma, arg = nil)
-        if arg.nil?
-          @db.execute2("PRAGMA #{pragma}")
-        else
-          @db.execute2("PRAGMA #{pragma}(#{arg})")
-        end
-      end
-
+      # just the rows
       def list(pragma, arg = nil)
         if arg.nil?
           @db.execute("PRAGMA #{pragma}")
@@ -85,12 +81,17 @@ module Nostrb
         end
       end
 
-      READONLY.each { |pragma|
-        define_method(pragma) { get(pragma) }
-      }
+      # include a header row
+      def report(pragma, arg = nil)
+        if arg.nil?
+          @db.execute2("PRAGMA #{pragma}")
+        else
+          @db.execute2("PRAGMA #{pragma}(#{arg})")
+        end
+      end
 
-      SCALAR.each { |pragma|
-        define_method(pragma) { get(pragma) }
+      SCALAR.each { |pragma| define_method(pragma) { get(pragma) }}
+      RW.each { |pragma|
         define_method(pragma + '=') { |val| set(pragma, val) }
       }
 
@@ -113,9 +114,10 @@ module Nostrb
     CONFIG = {
       default_transaction_mode: :immediate,
     }
+    SQLITE_USAGE = /\Asqlite_/
 
     PRAGMAS = {
-      foreign_keys: true,          # enable FK constrainsts
+      foreign_keys: true,          # enable FK constraints
       mmap_size: 128 * MB,         # enable mmap I/O, 128 MB
 
       # Write Ahead Log, append-only so safe for infrequent fsync
@@ -124,8 +126,6 @@ module Nostrb
       synchronous: 1,              # 1=normal, default, good for WAL
       wal_autocheckpoint: 1000,    # default, pages per fsync
     }
-
-    SQLITE_USAGE = /\Asqlite_/
 
     attr_reader :filename, :db, :pragma
 
@@ -187,7 +187,7 @@ module Nostrb
         }
       }
 
-      lines += ['', "pragma valuess", '---']
+      lines += ['', "pragma values", '---']
       Pragma::SCALAR.each { |pragma|
         val, enum = @pragma.get(pragma), Pragma::ENUM[pragma]
         val = format("%i (%s)", val, enum[val]) if enum
@@ -198,43 +198,7 @@ module Nostrb
     end
   end
 
-  class Reader < Storage
-    PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
-
-    def initialize(filename = FILENAME, **kwargs)
-      super(filename, **kwargs.merge(readonly: true))
-    end
-
-    def prepare
-      @select_events = @db.prepare("SELECT content, kind, pubkey,
-                                           created_at, id, sig
-                                      FROM events")
-      @select_tags = @db.prepare("SELECT tag, value, json
-                                    FROM tags
-                                   WHERE event_id = :event_id")
-    end
-
-    def select_events
-      self.prepare unless @select_events
-      @select_events.execute
-    end
-
-    def select_tags(event_id)
-      self.prepare unless @select_tags
-      @select_tags.execute(event_id: event_id)
-    end
-
-    def add_tags(hash)
-      tags = select_tags(hash.fetch("id"))
-      hash["tags"] = []
-      tags.each { |h|
-        hash["tags"] << Nostrb.parse(h.fetch("json"))
-      }
-      hash
-    end
-  end
-
-  class Writer < Storage
+  class Setup < Storage
     def drop_tables
       %w[events tags subscriptions].each { |tbl|
         @db.execute "DROP TABLE IF EXISTS #{tbl}" rescue nil
@@ -264,24 +228,51 @@ module Nostrb
                      CONSTRAINT       tags_pkey   PRIMARY KEY (event_id, tag))"
       @db.execute "CREATE TABLE subscriptions (id TEXT PRIMARY KEY NOT NULL)"
     end
+  end
 
-    def prepare
-      @add_event =
-        @db.prepare("INSERT INTO events
-                          VALUES (:content, :kind, :pubkey,
-                                  :created_at, :id, :sig)")
-      @add_tag =
-        @db.prepare("INSERT INTO tags " +
-                    "     VALUES (:event_id, :tag, :value, :json_array)")
+  class Reader < Storage
+    PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
+
+    def initialize(filename = FILENAME, **kwargs)
+      super(filename, **kwargs.merge(readonly: true))
     end
 
+    def select_events
+      @select_events ||= @db.prepare("SELECT content, kind, pubkey,
+                                             created_at, id, sig
+                                        FROM events")
+      @select_events.execute
+    end
+
+    def select_tags(event_id)
+      @select_tags ||= @db.prepare("SELECT tag, value, json
+                                      FROM tags
+                                     WHERE event_id = :event_id")
+      @select_tags.execute(event_id: event_id)
+    end
+
+    def add_tags(hash)
+      tags = select_tags(hash.fetch("id"))
+      hash["tags"] = []
+      tags.each_hash { |h|
+        hash["tags"] << Nostrb.parse(h.fetch("json"))
+      }
+      hash
+    end
+  end
+
+  class Writer < Storage
     # a valid hash, as returned from SignedEvent.validate!
     def add_event(valid)
-      self.prepare unless @add_tag
+      @add_event ||= @db.prepare("INSERT INTO events
+                                       VALUES (:content, :kind, :pubkey,
+                                               :created_at, :id, :sig)")
+      @add_tag ||= @db.prepare("INSERT INTO tags
+                                     VALUES (:event_id, :tag, :value, :json)")
       tags = valid.delete("tags")
       @add_event.execute(valid)
       tags.each { |a|
-        @add_tag.execute(event_id: valid.id,
+        @add_tag.execute(event_id: valid.fetch('id'),
                          tag: a[0],
                          value: a[1],
                          json: Nostrb.json(a))
