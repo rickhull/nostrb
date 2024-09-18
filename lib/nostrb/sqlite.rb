@@ -262,6 +262,36 @@ SQL
   class Reader < Storage
     PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
 
+    def self.event_clauses(filter)
+      clauses = []
+      if !filter.ids.empty?
+        clauses << format("id IN ('%s')", filter.ids.join("','"))
+      end
+      if !filter.authors.empty?
+        clauses << format("pubkey in ('%s')", filter.authors.join("','"))
+      end
+      if !filter.kinds.empty?
+        clauses << format("kind in (%s)", filter.kinds.join(','))
+      end
+      if filter.since
+        clauses << format("created_at >= %i", filter.since)
+      end
+      if filter.until
+        clauses << format("created_at <= %i", filter.until)
+      end
+      clauses
+    end
+
+    # filter_tags: { 'a' => [String] }
+    def self.tag_clauses(filter_tags)
+      clauses = []
+      filter_tags.each { |tag, values|
+        clauses << format("tag = %s", tag)
+        clauses << format("value in (%s)", values.join(','))
+      }
+      clauses
+    end
+
     def initialize(filename = FILENAME, **kwargs)
       super(filename, **kwargs.merge(readonly: true))
     end
@@ -270,11 +300,13 @@ SQL
     # Regular Events
     #
 
-    def select_events
-      @select_events ||= @db.prepare("SELECT content, kind, pubkey,
-                                             created_at, id, sig
-                                        FROM events")
-      @select_events.execute
+    def select_events(filter = nil, tbl = 'events')
+      sql = format("SELECT content, kind, pubkey, created_at, id, sig
+                      FROM %s", tbl)
+      if !filter.nil?
+        sql += format(" WHERE %s", Reader.event_clauses(filter).join(' AND '))
+      end
+      @db.query sql
     end
 
     def select_tags(event_id:, created_at:)
@@ -300,11 +332,8 @@ SQL
     # Replaceable Events
     #
 
-    def select_r_events
-      @select_r_events ||= @db.prepare("SELECT content, kind, pubkey,
-                                               created_at, id, sig
-                                          FROM r_events")
-      @select_r_events.execute
+    def select_r_events(filter = nil)
+      select_events(filter, 'r_events')
     end
 
     def select_r_tags(pubkey:, kind:)
@@ -337,8 +366,8 @@ SQL
                                      VALUES (:event_id, :created_at,
                                              :tag, :value, :json)")
       tags = valid.delete("tags")
-      @add_event.execute(valid)
-      tags.each { |a|
+      @add_event.execute(valid) # insert event
+      tags.each { |a|           # insert tags
         @add_tag.execute(event_id: valid.fetch('id'),
                          created_at: valid.fetch('created_at'),
                          tag: a[0],
