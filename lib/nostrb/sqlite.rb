@@ -208,7 +208,7 @@ module Nostrb
 
     def drop_tables
       %w[events tags r_events r_tags].each { |tbl|
-        @db.execute "DROP TABLE IF EXISTS #{tbl}" rescue nil
+        @db.execute "DROP TABLE IF EXISTS #{tbl}"
       }
     end
 
@@ -223,8 +223,9 @@ CREATE TABLE events (content TEXT NOT NULL,
 SQL
 
       @db.execute <<SQL
-CREATE TABLE tags (event_id    BLOB REFERENCES events (id)
-                               ON DELETE CASCADE NOT NULL,
+CREATE TABLE tags (event_id    BLOB NOT NULL
+                               REFERENCES events (id)
+                               ON DELETE CASCADE ON UPDATE CASCADE,
                    created_at  INTEGER NOT NULL,
                    tag         TEXT NOT NULL,
                    value       TEXT NOT NULL,
@@ -233,12 +234,12 @@ SQL
 
       @db.execute <<SQL
 CREATE TABLE r_events (content TEXT NOT NULL,
-                      kind INTEGER NOT NULL,
-                      pubkey BLOB NOT NULL,
-                      created_at INTEGER NOT NULL,
-                      id BLOB NOT NULL,
-                      sig BLOB NOT NULL,
-                      PRIMARY KEY (pubkey, kind))
+                       kind INTEGER NOT NULL,
+                       pubkey BLOB NOT NULL,
+                       created_at INTEGER NOT NULL,
+                       id BLOB NOT NULL,
+                       sig BLOB NOT NULL,
+          PRIMARY KEY (pubkey, kind))
 SQL
 
       @db.execute <<SQL
@@ -247,8 +248,9 @@ CREATE TABLE r_tags (r_pubkey    BLOB NOT NULL,
                      tag         TEXT NOT NULL,
                      value       TEXT NOT NULL,
                      json        TEXT NOT NULL,
-                     FOREIGN KEY (r_pubkey, r_kind)
-                      REFERENCES r_events (pubkey, kind))
+                                 FOREIGN KEY (r_pubkey, r_kind)
+                                 REFERENCES r_events (pubkey, kind)
+                                 ON DELETE CASCADE ON UPDATE CASCADE)
 SQL
     end
 
