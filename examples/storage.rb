@@ -27,6 +27,7 @@ puts hsh
 puts
 
 # compare to original
+rs.close
 puts "Faithful retrieval: #{hsh == event.to_h ? 'SUCCESS' : 'FAIL'}"
 puts
 
@@ -42,8 +43,9 @@ puts
 # store event
 writer.add_event e2.to_h
 
-# retrieve event
+# retrieve events
 rs = reader.select_events
+
 hsh = {}
 rs.each_hash { |h|
   if h['id'] == e2.id
