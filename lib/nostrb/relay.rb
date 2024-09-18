@@ -106,15 +106,19 @@ module Nostrb
     # the result set is the union of filter1 and filter2
 
     def handle_req(sid, *filters)
-      responses = []
-      @reader.select_events.each_hash { |h|
-        h = @reader.add_tags(h)
-        responses << Server.event(sid, h) if filters.any? { |f| f.match? h }
+      responses = Set.new
+
+      filters.each { |filter|
+        @reader.select_events(filter).each_hash { |h|
+          h = @reader.add_tags(h)
+          responses << Server.event(sid, h) if filter.match? h
+        }
+        @reader.select_r_events(filter).each_hash { |h|
+          h = @reader.add_r_tags(h)
+          responses << Server.event(sid, h) if filter.match? h
+        }
       }
-      @reader.select_r_events.each_hash { |h|
-        h = @reader.add_r_tags(h)
-        responses << Server.event(sid, h) if filters.any? { |f| f.match? h }
-      }
+      responses = responses.to_a
       responses << Server.eose(sid)
     end
 
