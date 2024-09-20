@@ -24,8 +24,8 @@ jobs:
       matrix:
         #ruby: [ head, jruby-head, truffleruby-head ]
         #ruby: [ head, truffleruby-head ]
-        ruby: [ head, jruby-head ]
-        #ruby: [ head ]
+        #ruby: [ head, jruby-head ]
+        ruby: [ head ]
     name: Ruby ${{ matrix.ruby }}
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +35,8 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler: none
       - name: Install dependencies
-        run: gem install schnorr_sig
+        run: gem install schnorr_sig oj sqlite3
       - name: Run tests
-        run: rake
+        run: rake test
+        env:
+          INPUT_DB_FILE: ${{ runner.temp }}/testing.db

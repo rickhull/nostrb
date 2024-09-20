@@ -5,6 +5,11 @@ require 'minitest/autorun'
 
 include Nostrb
 
+# this can be set by GitHubActions
+DB_FILE = ENV['INPUT_DB_FILE'] || 'testing.db'
+
+Setup.new(DB_FILE).setup
+
 Test::VALID_JSON = Nostrb.json(Source.publish(Test::SIGNED))
 
 describe Server do
@@ -48,7 +53,9 @@ describe Server do
       expect(resp[3]).wont_be_empty
 
       # ok:false requires nonempty message
-      expect { Server.ok(Test::SIGNED.id, "", ok: false) }.must_raise FormatError
+      expect {
+        Server.ok(Test::SIGNED.id, "", ok: false)
+      }.must_raise FormatError
       expect { Server.ok(Test::SIGNED.id, ok: false) }.must_raise FormatError
     end
 
@@ -99,7 +106,7 @@ describe Server do
   end
 
   it "has no initialization parameters" do
-    s = Server.new
+    s = Server.new(DB_FILE)
     expect(s).must_be_kind_of Server
   end
 
@@ -107,7 +114,7 @@ describe Server do
   it "stores inbound events" do
     skip
 
-    s = Server.new
+    s = Server.new(DB_FILE)
     s.ingest(Nostrb.json(Source.publish(Test.new_event)))
     events = s.events
     expect(events).must_be_kind_of Array
@@ -119,7 +126,7 @@ describe Server do
 
   it "has a single response to EVENT requests" do
     # respond OK: true
-    responses = Server.new.ingest(Test::VALID_JSON)
+    responses = Server.new(DB_FILE).ingest(Test::VALID_JSON)
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -134,7 +141,7 @@ describe Server do
     # invalid request type: respond error / NOTICE
     ary = Nostrb.parse(Test::VALID_JSON)
     ary[0] = ary[0].downcase
-    responses = Server.new.ingest(Nostrb.json(ary))
+    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -151,7 +158,7 @@ describe Server do
     hsh = ary[1]
     hsh.delete("id")
     ary[1] = hsh
-    responses = Server.new.ingest(Nostrb.json(ary))
+    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -168,7 +175,7 @@ describe Server do
     hsh = ary[1]
     hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(32))
     ary[1] = hsh
-    responses = Server.new.ingest(Nostrb.json(ary))
+    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -185,7 +192,7 @@ describe Server do
     hsh = ary[1]
     hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
     ary[1] = hsh
-    responses = Server.new.ingest(Nostrb.json(ary))
+    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -204,7 +211,7 @@ describe Server do
     hsh = ary[1]
     hsh["id"] = SchnorrSig.bin2hex(Random.bytes(32))
     ary[1] = hsh
-    responses = Server.new.ingest(Nostrb.json(ary))
+    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -227,7 +234,7 @@ describe Server do
     # respond EVENT
     # respond EOSE
 
-    s = Server.new
+    s = Server.new(DB_FILE)
     e1 = Event.new('one', pk: Test::PK).sign(Test::SK)
     e2 = Event.new('two', pk: Test::PK).sign(Test::SK)
     [e1, e2].each { |e|
@@ -278,7 +285,7 @@ describe Server do
   end
 
   it "has a single response to CLOSE requests" do
-    s = Server.new
+    s = Server.new(DB_FILE)
     sid = Test::EVENT.pubkey
     responses = s.ingest(Nostrb.json(Source.close(sid)))
 
