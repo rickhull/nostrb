@@ -24,8 +24,8 @@ jobs:
       matrix:
         #ruby: [ head, jruby-head, truffleruby-head ]
         #ruby: [ head, truffleruby-head ]
-        ruby: [ head, jruby-head ]
-        #ruby: [ head ]
+        #ruby: [ head, jruby-head ]
+        ruby: [ head ]
     name: Ruby ${{ matrix.ruby }}
     steps:
       - uses: actions/checkout@v4
