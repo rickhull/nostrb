@@ -1,6 +1,7 @@
 require 'nostrb/event'
 require 'nostrb/filter'
 require 'nostrb/sqlite'
+require 'nostrb/sequel'
 require 'set' # jruby wants this
 
 # Kind:
@@ -28,9 +29,20 @@ module Nostrb
       format("%s: %s", excp.class.name.split('::').last, excp.message)
     end
 
-    def initialize(db_filename = Storage::FILENAME)
-      @reader = Reader.new(db_filename)
-      @writer = Writer.new(db_filename)
+    def initialize(db_filename = nil, storage: :sqlite)
+      case storage
+      when :sqlite
+        require 'nostrb/sqlite'
+        mod = Nostrb::SQLite
+      when :sequel
+        require 'nostrb/sequel'
+        mod = Nostrb::Sequel
+      else
+        raise "unexpected: #{storage.inspect}"
+      end
+      db_filename ||= mod::Storage::FILENAME
+      @reader = mod::Reader.new(db_filename)
+      @writer = mod::Writer.new(db_filename)
     end
 
     # accepts a single json array
@@ -109,12 +121,10 @@ module Nostrb
       responses = Set.new
 
       filters.each { |f|
-        @reader.select_events(f).each_hash { |h|
-          h = @reader.parse_tags(h)
+        @reader.process_events.each { |h|
           responses << Server.event(sid, h) if f.match? h
         }
-        @reader.select_r_events(f).each_hash { |h|
-          h = @reader.parse_tags(h)
+        @reader.process_r_events(f).each { |h|
           responses << Server.event(sid, h) if f.match? h
         }
       }

@@ -5,10 +5,12 @@ require 'minitest/autorun'
 
 include Nostrb
 
+# use SQLite backing
+
 # this can be set by GitHubActions
 DB_FILE = ENV['INPUT_DB_FILE'] || 'testing.db'
 
-Setup.new(DB_FILE).setup
+SQLite::Setup.new(DB_FILE).setup
 
 Test::VALID_JSON = Nostrb.json(Source.publish(Test::SIGNED))
 

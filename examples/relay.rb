@@ -29,7 +29,8 @@ context = {}
 homer, marge = context['homer'], context['marge']
 bart, lisa, maggie = context['bart'], context['lisa'], context['maggie']
 
-relay = Server.new
+#relay = Server.new(storage: :sequel)
+relay = Server.new(storage: :sqlite)
 
 puts "Bart uploads his profile"
 hsh = {

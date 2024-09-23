@@ -1,11 +1,11 @@
-require 'nostrb/sqlite'
-require 'nostrb/event'
+require 'nostrb/sequel'
 
-include Nostrb::SQLite
+include Nostrb::Sequel
 
-# setup database
 puts Setup.new.setup
-puts
+
+writer = Writer.new
+reader = Reader.new
 
 # create event
 sk, pk = SchnorrSig.keypair
@@ -15,22 +15,16 @@ puts event.to_h
 puts
 
 # store event
-writer = Writer.new
-writer.add_event event.to_h
+writer.add_event(event.to_h)
 
 # retrieve event
-reader = Reader.new
-rs = reader.select_events
-hsh = Reader.hydrate(rs.next_hash)
-puts "Retrieved Event"
+hsh = reader.process_events.first
 puts hsh
 puts
 
 # compare to original
-rs.close
 puts "Faithful retrieval: #{hsh == event.to_h ? 'SUCCESS' : 'FAIL'}"
 puts
-
 
 # create new event with tags
 e2 = Nostrb::Event.new('yo', pk: pk)
@@ -41,7 +35,7 @@ puts e2.to_h
 puts
 
 # store event
-writer.add_event e2.to_h
+writer.add_event(e2.to_h)
 
 # retrieve event
 hsh = {}
