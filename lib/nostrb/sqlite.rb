@@ -1,7 +1,7 @@
 require 'sqlite3'
 
 module Nostrb
-  class Storage
+  module SQLite
     class Pragma
       ENUM = {
         'auto_vacuum' => %w[none full incremental],
@@ -106,124 +106,133 @@ module Nostrb
       }
     end
 
-    KB = 1024
-    MB = KB * 1024
-    GB = MB * 1024
+    class Storage
+      KB = 1024
+      MB = KB * 1024
+      GB = MB * 1024
 
-    FILENAME = 'tmp.db'
-    CONFIG = {
-      default_transaction_mode: :immediate,
-    }
-    SQLITE_USAGE = /\Asqlite_/
+      FILENAME = 'tmp.db'
+      CONFIG = {
+        default_transaction_mode: :immediate,
+      }
+      SQLITE_USAGE = /\Asqlite_/
 
-    PRAGMAS = {
-      foreign_keys: true,          # enable FK constraints
-      mmap_size: 128 * MB,         # enable mmap I/O, 128 MB
+      PRAGMAS = {
+        foreign_keys: true,          # enable FK constraints
+        mmap_size: 128 * MB,         # enable mmap I/O, 128 MB
 
-      # Write Ahead Log, append-only so safe for infrequent fsync
-      journal_mode: 'wal',         # enable WAL, less read/write contention
-      journal_size_limit: 64 * MB, # enable, 64 MB
-      synchronous: 1,              # 1=normal, default, good for WAL
-      wal_autocheckpoint: 1000,    # default, pages per fsync
-    }
+        # Write Ahead Log, append-only so safe for infrequent fsync
+        journal_mode: 'wal',         # enable WAL, less read/write contention
+        journal_size_limit: 64 * MB, # enable, 64 MB
+        synchronous: 1,              # 1=normal, default, good for WAL
+        wal_autocheckpoint: 1000,    # default, pages per fsync
+      }
 
-    attr_reader :filename, :db, :pragma
+      attr_reader :filename, :db, :pragma
 
-    def initialize(filename = FILENAME, **kwargs)
-      @filename = filename
-      @db = SQLite3::Database.new(@filename, **CONFIG.merge(kwargs))
-      @db.busy_handler_timeout = 5000 # 5 seconds, release GVL every ms
-      @pragma = Pragma.new(@db)
-      self.class::PRAGMAS.each { |name, val| @pragma.set(name, val) }
-    end
+      def initialize(filename = FILENAME, **kwargs)
+        @filename = filename
+        set_pragmas = kwargs.delete(:set_pragmas)
+        @db = SQLite3::Database.new(@filename, **CONFIG.merge(kwargs))
+        @db.busy_handler_timeout = 5000 # 5 seconds, release GVL every ms
+        @pragma = Pragma.new(@db)
+        set_pragmas() if set_pragmas
+      end
 
-    # below methods all return an array of strings
-    def compile_options = @pragma.list(:compile_options).map { |a| a[0] }
-    def database_files = @pragma.list(:database_list).map { |a| a[2] }
-    def all_table_names = @pragma.list(:table_list).map { |a| a[1] }
+      def set_pragmas
+        self.class::PRAGMAS.each { |name, val| @pragma.set(name, val) }
+      end
 
-    def table_names
-      all_table_names().select { |name| !SQLITE_USAGE.match name }
-    end
+      # below methods all return an array of strings
+      def compile_options = @pragma.list(:compile_options).map { |a| a[0] }
+      def database_files = @pragma.list(:database_list).map { |a| a[2] }
+      def all_table_names = @pragma.list(:table_list).map { |a| a[1] }
 
-    def all_index_names(table_name)
-      @pragma.list(:index_list, table_name).map { |a| a[1] }
-    end
+      def table_names
+        all_table_names().select { |name| !SQLITE_USAGE.match name }
+      end
 
-    def index_names(table_name)
-      all_index_names(table_name).select { |name| !SQLITE_USAGE.match name }
-    end
+      def all_index_names(table_name)
+        @pragma.list(:index_list, table_name).map { |a| a[1] }
+      end
 
-    def report
-      lines = ['compile_options', '---']
-      lines += self.compile_options
+      def index_names(table_name)
+        all_index_names(table_name).select { |name| !SQLITE_USAGE.match name }
+      end
 
-      lines += ['', 'database_files', '---']
-      lines += self.database_files
-
-      lines += ['', "table_names", '---']
-      tables = self.table_names
-      lines += tables
-
-      tables.each { |tbl|
-        lines += ['', "table_info(#{tbl})", '---']
-        lines += @pragma.table_info(tbl).map(&:inspect)
-
-        fks = @pragma.foreign_key_list(tbl).map(&:inspect)
-        if fks.length > 1
-          lines += ['', "foreign_key_list(#{tbl})", '---']
-          lines += fks
-        end
-
-        idxs = self.index_names(tbl)
-        if !idxs.empty?
-          lines += ['', "index_names(#{tbl})", '---']
-          lines += idxs
-        end
-
-        idxs.each { |idx|
-          lines += ['', "index_info(#{idx})", '---']
-          lines += @pragma.index_info(idx).map(&:inspect)
+      def pragma_scalars
+        Pragma::SCALAR.map { |pragma|
+          val, enum = @pragma.get(pragma), Pragma::ENUM[pragma]
+          val = format("%i (%s)", val, enum[val]) if enum
+          format("%s: %s", pragma, val)
         }
-      }
+      end
 
-      lines += ['', "pragma values", '---']
-      Pragma::SCALAR.each { |pragma|
-        val, enum = @pragma.get(pragma), Pragma::ENUM[pragma]
-        val = format("%i (%s)", val, enum[val]) if enum
-        lines << format("%s: %s", pragma, val)
-      }
+      def report
+        lines = ['compile_options', '---']
+        lines += self.compile_options
 
-      lines
+        lines += ['', 'database_files', '---']
+        lines += self.database_files
+
+        lines += ['', "table_names", '---']
+        tables = self.table_names
+        lines += tables
+
+        tables.each { |tbl|
+          lines += ['', "table_info(#{tbl})", '---']
+          lines += @pragma.table_info(tbl).map(&:inspect)
+
+          fks = @pragma.foreign_key_list(tbl).map(&:inspect)
+          if fks.length > 1
+            lines += ['', "foreign_key_list(#{tbl})", '---']
+            lines += fks
+          end
+
+          idxs = self.index_names(tbl)
+          if !idxs.empty?
+            lines += ['', "index_names(#{tbl})", '---']
+            lines += idxs
+          end
+
+          idxs.each { |idx|
+            lines += ['', "index_info(#{idx})", '---']
+            lines += @pragma.index_info(idx).map(&:inspect)
+          }
+        }
+
+        lines += ['', "pragma values", '---']
+        lines += self.pragma_scalars
+        lines
+      end
     end
-  end
 
-  class Setup < Storage
-    def setup
-      drop_tables
-      create_tables
-      create_indices
-      report
-    end
+    class Setup < Storage
+      def setup
+        drop_tables
+        create_tables
+        create_indices
+        report
+      end
 
-    def drop_tables
-      %w[events tags r_events r_tags].each { |tbl|
-        @db.execute "DROP TABLE IF EXISTS #{tbl}"
-      }
-    end
+      def drop_tables
+        %w[events tags r_events r_tags].each { |tbl|
+          @db.execute "DROP TABLE IF EXISTS #{tbl}"
+        }
+      end
 
-    def create_tables
-      @db.execute <<SQL
+      def create_tables
+        @db.execute <<SQL
 CREATE TABLE events (content    TEXT NOT NULL,
                      kind       INTEGER NOT NULL,
-                     pubkey     BLOB NOT NULL,
                      tags       BLOB NOT NULL,
+                     pubkey     BLOB NOT NULL,
                      created_at INTEGER NOT NULL,
                      id         BLOB PRIMARY KEY NOT NULL,
                      sig        BLOB NOT NULL)
 SQL
 
-      @db.execute <<SQL
+        @db.execute <<SQL
 CREATE TABLE tags (event_id    BLOB NOT NULL REFERENCES events (id)
                                ON DELETE CASCADE ON UPDATE CASCADE,
                    created_at  INTEGER NOT NULL,
@@ -232,163 +241,183 @@ CREATE TABLE tags (event_id    BLOB NOT NULL REFERENCES events (id)
                    json        BLOB NOT NULL)
 SQL
 
-      @db.execute <<SQL
+        @db.execute <<SQL
 CREATE TABLE r_events (content    TEXT NOT NULL,
                        kind       INTEGER NOT NULL,
-                       pubkey     BLOB NOT NULL,
                        tags       BLOB NOT NULL,
+                       pubkey     BLOB NOT NULL,
                        created_at INTEGER NOT NULL,
                        id         BLOB NOT NULL,
                        sig        BLOB NOT NULL,
           PRIMARY KEY (kind, pubkey))
 SQL
 
-      @db.execute <<SQL
+        @db.execute <<SQL
 CREATE TABLE r_tags (r_kind      INTEGER NOT NULL,
                      r_pubkey    BLOB NOT NULL,
+                     created_at  INTEGER NOT NULL,
                      tag         TEXT NOT NULL,
                      value       TEXT NOT NULL,
                      json        BLOB NOT NULL,
         FOREIGN KEY (r_kind, r_pubkey) REFERENCES r_events (kind, pubkey)
                                        ON DELETE CASCADE ON UPDATE CASCADE)
 SQL
+      end
+
+      def create_indices
+        @db.execute "CREATE INDEX idx_events_created_at ON events (created_at)"
+        @db.execute "CREATE INDEX idx_tags_created_at ON tags (created_at)"
+        @db.execute "CREATE INDEX idx_r_events_created_at
+                               ON r_events (created_at)"
+        @db.execute "CREATE INDEX idx_r_tags_created_at ON r_tags (created_at)"
+      end
     end
 
-    def create_indices
-      @db.execute "CREATE INDEX idx_events_pubkey ON events (pubkey)"
-      @db.execute "CREATE INDEX idx_events_created_at ON events (created_at)"
-      @db.execute "CREATE INDEX idx_tags_created_at ON tags (created_at)"
-    end
-  end
+    class Reader < Storage
+      PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
 
-  class Reader < Storage
-    PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
-
-    def self.event_clauses(filter)
-      clauses = []
-      if !filter.ids.empty?
-        clauses << format("id IN ('%s')", filter.ids.join("','"))
+      # parse the JSON tags into a Ruby array
+      def self.hydrate(hash)
+        hash["tags"] = Nostrb.parse(hash.fetch("tags"))
+        hash
       end
-      if !filter.authors.empty?
-        clauses << format("pubkey in ('%s')", filter.authors.join("','"))
-      end
-      if !filter.kinds.empty?
-        clauses << format("kind in (%s)", filter.kinds.join(','))
-      end
-      if filter.since
-        clauses << format("created_at >= %i", filter.since)
-      end
-      if filter.until
-        clauses << format("created_at <= %i", filter.until)
-      end
-      clauses.join(' AND ')
-    end
 
-    # filter_tags: { 'a' => [String] }
-    def self.tag_clauses(filter_tags)
-      clauses = []
-      filter_tags.each { |tag, values|
-        clauses << format("tag = %s", tag)
-        clauses << format("value in (%s)", values.join(','))
-      }
-      clauses.join(' AND ')
-    end
+      def self.event_clauses(filter)
+        clauses = []
+        if !filter.ids.empty?
+          clauses << format("id IN ('%s')", filter.ids.join("','"))
+        end
+        if !filter.authors.empty?
+          clauses << format("pubkey in ('%s')", filter.authors.join("','"))
+        end
+        if !filter.kinds.empty?
+          clauses << format("kind in (%s)", filter.kinds.join(','))
+        end
+        if filter.since
+          clauses << format("created_at >= %i", filter.since)
+        end
+        if filter.until
+          clauses << format("created_at <= %i", filter.until)
+        end
+        clauses.join(' AND ')
+      end
 
-    def initialize(filename = FILENAME, **kwargs)
-      super(filename, **kwargs.merge(readonly: true))
-    end
+      # filter_tags: { 'a' => [String] }
+      def self.tag_clauses(filter_tags)
+        clauses = []
+        filter_tags.each { |tag, values|
+          clauses << format("tag = %s", tag)
+          clauses << format("value in (%s)", values.join(','))
+        }
+        clauses.join(' AND ')
+      end
 
-    #
-    # Regular Events
-    #
+      def initialize(filename = FILENAME, **kwargs)
+        super(filename, **kwargs.merge(readonly: true))
+      end
 
-    def select_events_table(table = 'events', filter = nil)
-      sql = format("SELECT content, kind, pubkey, tags, created_at, id, sig
+      #
+      # Regular Events
+      #
+
+      def select_events_table(table = 'events', filter = nil)
+        sql = format("SELECT content, kind, tags, pubkey, created_at, id, sig
                       FROM %s", table)
-      if !filter.nil?
-        sql += format(" WHERE %s", Reader.event_clauses(filter))
+        if !filter.nil?
+          sql += format(" WHERE %s", Reader.event_clauses(filter))
+        end
+        @db.query sql
       end
-      @db.query sql
-    end
 
-    # these are presumably filtered so cannot be prepared
-    # use Database#query to get a ResultSet
-    def select_events(filter = nil)
-      select_events_table('events', filter)
-    end
+      # these are presumably filtered so cannot be prepared
+      # use Database#query to get a ResultSet
+      def select_events(filter = nil)
+        select_events_table('events', filter)
+      end
 
-    # use a prepared statement to get a ResultSet
-    def select_tags(event_id:, created_at:)
-      @select_tags ||= @db.prepare("SELECT tag, value, json
+      def process_events(filter = nil)
+        a = []
+        select_events(filter).each_hash { |h| a << Reader.hydrate(h) }
+        a
+      end
+
+      # use a prepared statement to get a ResultSet
+      def select_tags(event_id:, created_at:)
+        @select_tags ||= @db.prepare("SELECT tag, value, json
                                       FROM tags
                                      WHERE event_id = :event_id
                                        AND created_at = :created_at")
-      @select_tags.execute(event_id: event_id, created_at: created_at)
-    end
+        @select_tags.execute(event_id: event_id, created_at: created_at)
+      end
 
-    # update hash with tags
-    def parse_tags(hash)
-      hash["tags"] = Nostrb.parse(hash.fetch("tags"))
-      hash
-    end
+      #
+      # Replaceable Events
+      #
 
-    #
-    # Replaceable Events
-    #
+      def select_r_events(filter = nil)
+        select_events_table('r_events', filter)
+      end
 
-    def select_r_events(filter = nil)
-      select_events_table('r_events', filter)
-    end
+      def process_r_events(filter = nil)
+        a = []
+        select_r_events(filter).each_hash { |h| a << Reader.hydrate(h) }
+        a
+      end
 
-    def select_r_tags(kind:, pubkey:)
-      @select_r_tags ||= @db.prepare("SELECT tag, value, json
+      def select_r_tags(kind:, pubkey:, created_at:)
+        @select_r_tags ||= @db.prepare("SELECT tag, value, json
                                         FROM r_tags
-                                       WHERE r_kind = :kind
+                                       WHERE created_at = :created_at
+                                         AND r_kind = :kind
                                          AND r_pubkey = :pubkey")
-      @select_r_tags.execute(kind: kind, pubkey: pubkey)
+        @select_r_tags.execute(kind: kind,
+                               pubkey: pubkey,
+                               created_at: created_at)
+      end
     end
-  end
 
-  class Writer < Storage
-    # a valid hash, as returned from SignedEvent.validate!
-    def add_event(valid)
-      @add_event ||= @db.prepare("INSERT INTO events
-                                       VALUES (:content, :kind, :pubkey, :tags,
+    class Writer < Storage
+      # a valid hash, as returned from SignedEvent.validate!
+      def add_event(valid)
+        @add_event ||= @db.prepare("INSERT INTO events
+                                       VALUES (:content, :kind, :tags, :pubkey,
                                                :created_at, :id, :sig)")
-      @add_tag ||= @db.prepare("INSERT INTO tags
+        @add_tag ||= @db.prepare("INSERT INTO tags
                                      VALUES (:event_id, :created_at,
                                              :tag, :value, :json)")
-      tags = valid["tags"]
-      valid["tags"] = Nostrb.json(tags)
-      @add_event.execute(valid) # insert event
-      tags.each { |a|           # insert tags
-        @add_tag.execute(event_id: valid.fetch('id'),
-                         created_at: valid.fetch('created_at'),
-                         tag: a[0],
-                         value: a[1],
-                         json: Nostrb.json(a))
-      }
-    end
+        tags = valid["tags"]
+        valid["tags"] = Nostrb.json(tags)
+        @add_event.execute(valid) # insert event
+        tags.each { |a|           # insert tags
+          @add_tag.execute(event_id: valid.fetch('id'),
+                           created_at: valid.fetch('created_at'),
+                           tag: a[0],
+                           value: a[1],
+                           json: Nostrb.json(a))
+        }
+      end
 
-    # add replaceable event
-    def add_r_event(valid)
-      @add_r_event ||=
-        @db.prepare("INSERT OR REPLACE INTO r_events
-                                     VALUES (:content, :kind, :pubkey, :tags,
+      # add replaceable event
+      def add_r_event(valid)
+        @add_r_event ||=
+          @db.prepare("INSERT OR REPLACE INTO r_events
+                                     VALUES (:content, :kind, :tags, :pubkey,
                                              :created_at, :id, :sig)")
-      @add_rtag ||= @db.prepare("INSERT INTO r_tags
-                                      VALUES (:r_kind, :r_pubkey,
+        @add_rtag ||= @db.prepare("INSERT INTO r_tags
+                                      VALUES (:r_kind, :r_pubkey, :created_at,
                                               :tag, :value, :json)")
-      tags = valid["tags"]
-      valid["tags"] = Nostrb.json(tags)
-      @add_r_event.execute(valid) # upsert event
-      tags.each { |a|             # insert tags
-        @add_rtag.execute(r_pubkey: valid.fetch('pubkey'),
-                          r_kind: valid.fetch('kind'),
-                          tag: a[0],
-                          value: a[1],
-                          json: Nostrb.json(a))
-      }
+        tags = valid.fetch('tags')
+        valid['tags'] = Nostrb.json(tags)
+        @add_r_event.execute(valid) # upsert event
+        tags.each { |a|             # insert tags
+          @add_rtag.execute(r_pubkey: valid.fetch('pubkey'),
+                            r_kind: valid.fetch('kind'),
+                            created_at: valid.fetch('created_at'),
+                            tag: a[0],
+                            value: a[1],
+                            json: Nostrb.json(a))
+        }
+      end
     end
   end
 end
