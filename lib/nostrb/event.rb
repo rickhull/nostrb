@@ -5,19 +5,19 @@ module Nostrb
 
     # Event
     #   content: any string
-    #   pubkey: 64 hex chars (32B binary)
     #   kind: 0..65535
     #   tags: Array[Array[string]]
+    #   pubkey: 64 hex chars (32B binary)
 
     def self.digest(ary) = Nostrb.digest(Nostrb.json(Nostrb.ary!(ary)))
 
-    attr_reader :content, :pk, :kind, :tags
+    attr_reader :content, :kind, :tags, :pk
 
-    def initialize(content = '', pk:, kind: 1, tags: [])
+    def initialize(content = '', kind: 1, tags: [], pk:)
       @content = Nostrb.txt!(content)
-      @pk      = Nostrb.key!(pk)
       @kind    = Nostrb.kind!(kind)
       @tags    = Nostrb.tags!(tags)
+      @pk      = Nostrb.key!(pk)
     end
 
     alias_method :to_s, :content
@@ -124,9 +124,9 @@ module Nostrb
     end
 
     def content = @event.content
-    def pubkey = @event.pubkey
     def kind = @event.kind
     def tags = @event.tags
+    def pubkey = @event.pubkey
     def to_s = @event.to_s
     def serialize = @event.serialize(@created_at)
 
@@ -135,9 +135,9 @@ module Nostrb
 
     def to_h
       Hash[ "content" => @event.content,
-            "pubkey" => @event.pubkey,
             "kind" => @event.kind,
             "tags" => @event.tags,
+            "pubkey" => @event.pubkey,
             "created_at" => @created_at,
             "id" => self.id,
             "sig" => self.sig ]
