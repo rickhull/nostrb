@@ -49,14 +49,14 @@ module Nostrb
       # either no args (nil) or an optional single arg (symbol)
       COMMAND = {
         # checks
-        foreign_key_check: :optional,  # report
-        integrity_check: :optional,    # ok
-        quick_check: :optional,        # ok
+        foreign_key_check: :optional,  # table_name => report
+        integrity_check: :optional,    # table_name | num_errors => ok
+        quick_check: :optional,        # table_name | num_errors => ok
         # manipulation
-        incremental_vacuum: :optional, # empty
-        optimize: :optional,           # empty
+        incremental_vacuum: :optional, # page_count => empty
+        optimize: :optional,           # mask => empty
         shrink_memory: nil,            # empty
-        wal_checkpoint: :optional,
+        wal_checkpoint: :optional, # PASSIVE | FULL | RESTART | TRUNCATE => row
       }
 
       def initialize(db)
