@@ -6,12 +6,12 @@ puts "Marge Simpson: hello world"
 puts
 
 # generate keys
-marge_sk, marge_pk = SchnorrSig.keypair
+sk, pk = SchnorrSig.keypair
 
 # create a message using the public key
-marge = Source.new(marge_pk)
+marge = Source.new(pk)
 hello = marge.text_note('Good morning, Homie')
-signed = hello.sign(marge_sk)
+signed = hello.sign(sk)
 
 puts "Content: #{hello}"
 puts
@@ -25,15 +25,15 @@ puts
 puts "Homer: hello back, ref prior event"
 puts
 
-homer_sk, homer_pk = SchnorrSig.keypair
-homer = Source.new(homer_pk)
-response = homer.text_note('Good morning, Marge')
-response.ref_event(signed.id) # reference marge's hello
-signed = response.sign(homer_sk)
+sk, pk = SchnorrSig.keypair
+homer = Source.new(pk)
+hello2 = homer.text_note('Good morning, Marge')
+hello2.ref_event(signed.id) # reference marge's hello
+signed = hello2.sign(sk)
 
-puts "Content: #{response}"
+puts "Content: #{hello2}"
 puts
-puts "Serialized: #{response.to_a.inspect}"
+puts "Serialized: #{hello2.to_a.inspect}"
 puts
 puts "Signed: #{signed.to_h}"
 puts
@@ -43,11 +43,11 @@ puts
 puts "Maggie: love letter, ref Marge's pubkey"
 puts
 
-maggie_sk, maggie_pk = SchnorrSig.keypair
-maggie = Source.new(maggie_pk)
+sk, pk = SchnorrSig.keypair
+maggie = Source.new(pk)
 love_letter = maggie.text_note("Dear Mom,\nYou're the best.\nLove, Maggie")
 love_letter.ref_pubkey(marge.pubkey)
-signed = love_letter.sign(maggie_sk)
+signed = love_letter.sign(sk)
 
 puts "Content: #{love_letter}"
 puts
@@ -61,13 +61,13 @@ puts
 puts "Bart uploads his profile"
 puts
 
-bart_sk, bart_pk = SchnorrSig.keypair
-bart = Source.new(bart_pk)
+sk, pk = SchnorrSig.keypair
+bart = Source.new(pk)
 profile = bart.user_metadata(name: 'Bart',
                              about: 'Bartholomew Jojo Simpson',
                              picture: 'https://upload.wikimedia.org' +
                              '/wikipedia/en/a/aa/Bart_Simpson_200px.png')
-signed = profile.sign(bart_sk)
+signed = profile.sign(sk)
 
 puts "Content: #{profile}"
 puts
@@ -81,8 +81,8 @@ puts
 puts "Lisa follows her family"
 puts
 
-lisa_sk, lisa_pk = SchnorrSig.keypair
-lisa = Source.new(lisa_pk)
+sk, pk = SchnorrSig.keypair
+lisa = Source.new(pk)
 
 pubkey_hsh = {
   marge.pubkey => ["wss://thesimpsons.com/", "marge"],
@@ -92,7 +92,7 @@ pubkey_hsh = {
 }
 
 following = lisa.follow_list(pubkey_hsh)
-signed = following.sign(lisa_sk)
+signed = following.sign(sk)
 
 puts "Content: #{following}"
 puts
