@@ -1,4 +1,5 @@
 require 'nostrb/sequel'
+require 'nostrb/event'
 
 include Nostrb::Sequel
 
