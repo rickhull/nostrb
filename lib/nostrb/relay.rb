@@ -108,14 +108,14 @@ module Nostrb
     def handle_req(sid, *filters)
       responses = Set.new
 
-      filters.each { |filter|
-        @reader.select_events(filter).each_hash { |h|
-          h = @reader.add_tags(h)
-          responses << Server.event(sid, h) if filter.match? h
+      filters.each { |f|
+        @reader.select_events(f).each_hash { |h|
+          h = @reader.parse_tags(h)
+          responses << Server.event(sid, h) if f.match? h
         }
-        @reader.select_r_events(filter).each_hash { |h|
-          h = @reader.add_r_tags(h)
-          responses << Server.event(sid, h) if filter.match? h
+        @reader.select_r_events(f).each_hash { |h|
+          h = @reader.parse_tags(h)
+          responses << Server.event(sid, h) if f.match? h
         }
       }
       responses = responses.to_a

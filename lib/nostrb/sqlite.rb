@@ -214,43 +214,43 @@ module Nostrb
 
     def create_tables
       @db.execute <<SQL
-CREATE TABLE events (content TEXT NOT NULL,
-                     kind INTEGER NOT NULL,
-                     pubkey BLOB NOT NULL,
+CREATE TABLE events (content    TEXT NOT NULL,
+                     kind       INTEGER NOT NULL,
+                     pubkey     BLOB NOT NULL,
+                     tags       BLOB NOT NULL,
                      created_at INTEGER NOT NULL,
-                     id BLOB PRIMARY KEY NOT NULL,
-                     sig BLOB NOT NULL)
+                     id         BLOB PRIMARY KEY NOT NULL,
+                     sig        BLOB NOT NULL)
 SQL
 
       @db.execute <<SQL
-CREATE TABLE tags (event_id    BLOB NOT NULL
-                               REFERENCES events (id)
+CREATE TABLE tags (event_id    BLOB NOT NULL REFERENCES events (id)
                                ON DELETE CASCADE ON UPDATE CASCADE,
                    created_at  INTEGER NOT NULL,
                    tag         TEXT NOT NULL,
                    value       TEXT NOT NULL,
-                   json        TEXT NOT NULL)
+                   json        BLOB NOT NULL)
 SQL
 
       @db.execute <<SQL
-CREATE TABLE r_events (content TEXT NOT NULL,
-                       kind INTEGER NOT NULL,
-                       pubkey BLOB NOT NULL,
+CREATE TABLE r_events (content    TEXT NOT NULL,
+                       kind       INTEGER NOT NULL,
+                       pubkey     BLOB NOT NULL,
+                       tags       BLOB NOT NULL,
                        created_at INTEGER NOT NULL,
-                       id BLOB NOT NULL,
-                       sig BLOB NOT NULL,
-          PRIMARY KEY (pubkey, kind))
+                       id         BLOB NOT NULL,
+                       sig        BLOB NOT NULL,
+          PRIMARY KEY (kind, pubkey))
 SQL
 
       @db.execute <<SQL
-CREATE TABLE r_tags (r_pubkey    BLOB NOT NULL,
-                     r_kind      INTEGER NOT NULL,
+CREATE TABLE r_tags (r_kind      INTEGER NOT NULL,
+                     r_pubkey    BLOB NOT NULL,
                      tag         TEXT NOT NULL,
                      value       TEXT NOT NULL,
-                     json        TEXT NOT NULL,
-                                 FOREIGN KEY (r_pubkey, r_kind)
-                                 REFERENCES r_events (pubkey, kind)
-                                 ON DELETE CASCADE ON UPDATE CASCADE)
+                     json        BLOB NOT NULL,
+        FOREIGN KEY (r_kind, r_pubkey) REFERENCES r_events (kind, pubkey)
+                                       ON DELETE CASCADE ON UPDATE CASCADE)
 SQL
     end
 
@@ -281,7 +281,7 @@ SQL
       if filter.until
         clauses << format("created_at <= %i", filter.until)
       end
-      clauses
+      clauses.join(' AND ')
     end
 
     # filter_tags: { 'a' => [String] }
@@ -291,7 +291,7 @@ SQL
         clauses << format("tag = %s", tag)
         clauses << format("value in (%s)", values.join(','))
       }
-      clauses
+      clauses.join(' AND ')
     end
 
     def initialize(filename = FILENAME, **kwargs)
@@ -302,15 +302,22 @@ SQL
     # Regular Events
     #
 
-    def select_events(filter = nil, tbl = 'events')
-      sql = format("SELECT content, kind, pubkey, created_at, id, sig
-                      FROM %s", tbl)
+    def select_events_table(table = 'events', filter = nil)
+      sql = format("SELECT content, kind, pubkey, tags, created_at, id, sig
+                      FROM %s", table)
       if !filter.nil?
-        sql += format(" WHERE %s", Reader.event_clauses(filter).join(' AND '))
+        sql += format(" WHERE %s", Reader.event_clauses(filter))
       end
       @db.query sql
     end
 
+    # these are presumably filtered so cannot be prepared
+    # use Database#query to get a ResultSet
+    def select_events(filter = nil)
+      select_events_table('events', filter)
+    end
+
+    # use a prepared statement to get a ResultSet
     def select_tags(event_id:, created_at:)
       @select_tags ||= @db.prepare("SELECT tag, value, json
                                       FROM tags
@@ -320,13 +327,8 @@ SQL
     end
 
     # update hash with tags
-    def add_tags(hash)
-      tags = select_tags(event_id: hash.fetch("id"),
-                         created_at: hash.fetch("created_at"))
-      hash["tags"] = []
-      tags.each_hash { |h|
-        hash["tags"] << Nostrb.parse(h.fetch("json"))
-      }
+    def parse_tags(hash)
+      hash["tags"] = Nostrb.parse(hash.fetch("tags"))
       hash
     end
 
@@ -335,26 +337,15 @@ SQL
     #
 
     def select_r_events(filter = nil)
-      select_events(filter, 'r_events')
+      select_events_table('r_events', filter)
     end
 
-    def select_r_tags(pubkey:, kind:)
+    def select_r_tags(kind:, pubkey:)
       @select_r_tags ||= @db.prepare("SELECT tag, value, json
                                         FROM r_tags
-                                       WHERE r_pubkey = :pubkey
-                                         AND r_kind = :kind")
-      @select_r_tags.execute(pubkey: pubkey, kind: kind)
-    end
-
-    # update hash with r_tags
-    def add_r_tags(hash)
-      tags = select_r_tags(pubkey: hash.fetch('pubkey'),
-                           kind: hash.fetch('kind'))
-      hash["tags"] = []
-      tags.each_hash { |h|
-        hash["tags"] << Nostrb.parse(h.fetch("json"))
-      }
-      hash
+                                       WHERE r_kind = :kind
+                                         AND r_pubkey = :pubkey")
+      @select_r_tags.execute(kind: kind, pubkey: pubkey)
     end
   end
 
@@ -362,12 +353,13 @@ SQL
     # a valid hash, as returned from SignedEvent.validate!
     def add_event(valid)
       @add_event ||= @db.prepare("INSERT INTO events
-                                       VALUES (:content, :kind, :pubkey,
+                                       VALUES (:content, :kind, :pubkey, :tags,
                                                :created_at, :id, :sig)")
       @add_tag ||= @db.prepare("INSERT INTO tags
                                      VALUES (:event_id, :created_at,
                                              :tag, :value, :json)")
-      tags = valid.delete("tags")
+      tags = valid["tags"]
+      valid["tags"] = Nostrb.json(tags)
       @add_event.execute(valid) # insert event
       tags.each { |a|           # insert tags
         @add_tag.execute(event_id: valid.fetch('id'),
@@ -382,14 +374,15 @@ SQL
     def add_r_event(valid)
       @add_r_event ||=
         @db.prepare("INSERT OR REPLACE INTO r_events
-                                     VALUES (:content, :kind, :pubkey,
+                                     VALUES (:content, :kind, :pubkey, :tags,
                                              :created_at, :id, :sig)")
       @add_rtag ||= @db.prepare("INSERT INTO r_tags
-                                      VALUES (:r_pubkey, :r_kind,
+                                      VALUES (:r_kind, :r_pubkey,
                                               :tag, :value, :json)")
-      tags = valid.delete("tags")
-      @add_r_event.execute(valid)
-      tags.each { |a|
+      tags = valid["tags"]
+      valid["tags"] = Nostrb.json(tags)
+      @add_r_event.execute(valid) # upsert event
+      tags.each { |a|             # insert tags
         @add_rtag.execute(r_pubkey: valid.fetch('pubkey'),
                           r_kind: valid.fetch('kind'),
                           tag: a[0],

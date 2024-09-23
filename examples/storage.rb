@@ -21,7 +21,7 @@ writer.add_event event.to_h
 # retrieve event
 reader = Reader.new
 rs = reader.select_events
-hsh = reader.add_tags(rs.next_hash)
+hsh = reader.parse_tags(rs.next_hash)
 puts "Retrieved Event"
 puts hsh
 puts
@@ -49,9 +49,9 @@ rs = reader.select_events
 hsh = {}
 rs.each_hash { |h|
   if h['id'] == e2.id
-    hsh = reader.add_tags(h)
+    hsh = reader.parse_tags(h)
     puts "Retrieved Event"
-    puts h
+    puts hsh
     puts
   end
 }
