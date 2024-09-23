@@ -1,7 +1,5 @@
 require 'sequel'
-require 'sqlite3'
-require 'nostrb/event'
-require 'nostrb/filter'
+require 'nostrb/sqlite'
 
 module Nostrb
   module Sequel
