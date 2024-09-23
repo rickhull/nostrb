@@ -18,10 +18,8 @@ in the Nostr universe.  It provides everything needed to process incoming
 events, including signature verification, as well as most everything needed
 to generate outbound events, as a Nostr client or source.
 
-Zero networking or storage is handled by this library at this time.  While
-that may be added in the future, the limited goal of this library is to
-provide the fundamentals related to Nostr Events that a client or relay may
-need.
+While networking is not provided (yet), storage for relays is handled by
+SQLite, with optional Sequel support.
 
 # Usage
 
