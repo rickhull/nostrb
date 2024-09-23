@@ -1,4 +1,5 @@
 require 'sqlite3'
+require 'nostrb/filter'
 
 module Nostrb
   module SQLite
