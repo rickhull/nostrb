@@ -24,7 +24,7 @@ puts signed.to_h
 puts
 
 puts "Signed JSON"
-puts signed.to_json
+puts Nostrb.json(signed.to_h)
 puts
 
 puts
@@ -44,5 +44,5 @@ puts signed.to_h
 puts
 
 puts "Signed JSON"
-puts signed.to_json
+puts Nostrb.json(signed.to_h)
 puts
