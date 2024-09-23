@@ -1,13 +1,12 @@
 require 'nostrb/event'
 require 'nostrb/filter'
 require 'nostrb/sqlite'
-require 'nostrb/sequel'
 require 'set' # jruby wants this
 
 # Kind:
+#   1,4..44,1000..9999: regular -- relay stores all
 #   0,3: replaceable -- relay stores only the last message from pubkey
 #   2: deprecated
-#   1,4..44,1000..9999: regular -- relay stores all
 #   10_000..19_999: replaceable -- relay stores latest(pubkey, kind)
 #   20_000..29_999: ephemeral -- relay doesn't store
 #   30_000..39_999: parameterized replaceable -- latest(pubkey, kind, dtag)
@@ -32,7 +31,6 @@ module Nostrb
     def initialize(db_filename = nil, storage: :sqlite)
       case storage
       when :sqlite
-        require 'nostrb/sqlite'
         mod = Nostrb::SQLite
       when :sequel
         require 'nostrb/sequel'
@@ -48,18 +46,22 @@ module Nostrb
     # accepts a single json array
     # returns a ruby array of response strings (json array)
     def ingest(json)
-      a = Nostrb.ary!(Nostrb.parse(json))
-      case a[0]
-      when 'EVENT'
-        [handle_event(Nostrb.check!(a[1], Hash))]
-      when 'REQ'
-        sid = Nostrb.sid!(a[1])
-        filters = a[2..-1].map { |f| Filter.ingest(f) }
-        handle_req(sid, *filters)
-      when 'CLOSE'
-        [handle_close(Nostrb.sid!(a[1]))]
-      else
-        [Server.notice("unexpected: #{a[0].inspect}")]
+      begin
+        a = Nostrb.ary!(Nostrb.parse(json))
+        case a[0]
+        when 'EVENT'
+          [handle_event(Nostrb.check!(a[1], Hash))]
+        when 'REQ'
+          sid = Nostrb.sid!(a[1])
+          filters = a[2..-1].map { |f| Filter.ingest(f) }
+          handle_req(sid, *filters)
+        when 'CLOSE'
+          [handle_close(Nostrb.sid!(a[1]))]
+        else
+          [Server.notice("unexpected: #{a[0].inspect}")]
+        end
+      rescue RuntimeError => e
+        [Server.error(e)]
       end
     end
 
@@ -76,12 +78,12 @@ module Nostrb
       begin
         hsh = SignedEvent.verify(hsh)
         case hsh['kind']
-        when 0, 3, (10_000..19_999)
-          # replaceable, store latest (pubkey, kind)
-          @writer.add_r_event(hsh)
         when 1, (4..44), (1000..9999)
           # regular, store all
           @writer.add_event(hsh)
+        when 0, 3, (10_000..19_999)
+          # replaceable, store latest (pubkey, kind)
+          @writer.add_r_event(hsh)
         when 20_000..29_999
           # ephemeral, don't store
         when 30_000..30_999
