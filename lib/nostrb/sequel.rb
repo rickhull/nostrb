@@ -18,6 +18,18 @@ module Nostrb
         @db = ::Sequel.connect("sqlite://#{filename}")
       end
 
+      def setup
+        Setup.new(@filename)
+      end
+
+      def reader
+        Reader.new(@filename)
+      end
+
+      def writer
+        Writer.new(@filename)
+      end
+
       def schema(table)
         @db.schema(table).map { |a| Storage.schema_line(*a) }
       end
@@ -62,6 +74,7 @@ module Nostrb
           foreign_key :event_id, :events,
                       key: :id,
                       type: :text,
+                      null: false,
                       on_delete: :cascade,
                       on_update: :cascade
           int  :created_at, null: false, index: { name: :idx_tags_created_at }
@@ -163,6 +176,7 @@ module Nostrb
         }
       end
 
+      # use insert_conflict to replace latest event
       def add_r_event(valid)
         @db[:r_events].insert_conflict.
           insert(valid.merge('tags' => Nostrb.json(valid['tags'])))
