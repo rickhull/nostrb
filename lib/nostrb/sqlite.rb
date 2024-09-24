@@ -140,6 +140,18 @@ module Nostrb
         set_pragmas() if set_pragmas
       end
 
+      def setup
+        Setup.new(@filename)
+      end
+
+      def reader
+        Reader.new(@filename)
+      end
+
+      def writer
+        Writer.new(@filename)
+      end
+
       def set_pragmas
         self.class::PRAGMAS.each { |name, val| @pragma.set(name, val) }
       end
@@ -225,41 +237,41 @@ module Nostrb
       def create_tables
         @db.execute <<SQL
 CREATE TABLE events (content    TEXT NOT NULL,
-                     kind       INTEGER NOT NULL,
-                     tags       BLOB NOT NULL,
-                     pubkey     BLOB NOT NULL,
-                     created_at INTEGER NOT NULL,
-                     id         BLOB PRIMARY KEY NOT NULL,
-                     sig        BLOB NOT NULL)
+                     kind       INT NOT NULL,
+                     tags       TEXT NOT NULL,
+                     pubkey     TEXT NOT NULL,
+                     created_at INT NOT NULL,
+                     id         TEXT PRIMARY KEY NOT NULL,
+                     sig        TEXT NOT NULL)
 SQL
 
         @db.execute <<SQL
-CREATE TABLE tags (event_id    BLOB NOT NULL REFERENCES events (id)
+CREATE TABLE tags (event_id    TEXT NOT NULL REFERENCES events (id)
                                ON DELETE CASCADE ON UPDATE CASCADE,
-                   created_at  INTEGER NOT NULL,
+                   created_at  INT NOT NULL,
                    tag         TEXT NOT NULL,
                    value       TEXT NOT NULL,
-                   json        BLOB NOT NULL)
+                   json        TEXT NOT NULL)
 SQL
 
         @db.execute <<SQL
 CREATE TABLE r_events (content    TEXT NOT NULL,
-                       kind       INTEGER NOT NULL,
-                       tags       BLOB NOT NULL,
-                       pubkey     BLOB NOT NULL,
-                       created_at INTEGER NOT NULL,
-                       id         BLOB NOT NULL,
-                       sig        BLOB NOT NULL,
+                       kind       INT NOT NULL,
+                       tags       TEXT NOT NULL,
+                       pubkey     TEXT NOT NULL,
+                       created_at INT NOT NULL,
+                       id         TEXT NOT NULL,
+                       sig        TEXT NOT NULL,
           PRIMARY KEY (kind, pubkey))
 SQL
 
         @db.execute <<SQL
-CREATE TABLE r_tags (r_kind      INTEGER NOT NULL,
-                     r_pubkey    BLOB NOT NULL,
-                     created_at  INTEGER NOT NULL,
+CREATE TABLE r_tags (r_kind      INT NOT NULL,
+                     r_pubkey    TEXT NOT NULL,
+                     created_at  INT NOT NULL,
                      tag         TEXT NOT NULL,
                      value       TEXT NOT NULL,
-                     json        BLOB NOT NULL,
+                     json        TEXT NOT NULL,
         FOREIGN KEY (r_kind, r_pubkey) REFERENCES r_events (kind, pubkey)
                                        ON DELETE CASCADE ON UPDATE CASCADE)
 SQL
