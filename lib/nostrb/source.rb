@@ -39,11 +39,20 @@ module Nostrb
     ############################
     # Event Creation
 
-    #           NIP-01
-    def event(content, kind = 1)
+    def event(content, kind)
       Event.new(content, kind: kind, pk: @pk)
     end
-    alias_method :text_note, :event
+
+    #           NIP-01
+    # Input
+    #   content: string
+    # Output
+    #   Event
+    #     content: <content>
+    #     kind: 1
+    def text_note(content)
+      event(content, 1)
+    end
 
     #           NIP-01
     # Input
@@ -85,14 +94,14 @@ module Nostrb
     #           NIP-09
     # Input
     #   explanation: content string
-    #   event_ids: array of event ids, hex format
+    #   *event_ids: array of event ids, hex format
     # Output
     #   Event
     #     content: explanation
     #     kind: 5, deletion request
     #     tags: [['e', event_id]]
     # TODO: support deletion of replaceable events ('a' tags)
-    def deletion_request(explanation, event_ids)
+    def deletion_request(explanation, *event_ids)
       e = event(explanation, 5)
       event_ids.each { |eid| e.ref_event(eid) }
       e
