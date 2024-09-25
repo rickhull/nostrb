@@ -313,7 +313,7 @@ describe Server do
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty
-      expect(msg).must_match /SignatureCheck/
+      expect(msg).must_match(/SignatureCheck/)
     end
 
     # "id" and "sig" spoofed from another event
@@ -337,7 +337,7 @@ describe Server do
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty
-      expect(msg).must_match /IdCheck/
+      expect(msg).must_match(/IdCheck/)
     end
 
     # random "id"
