@@ -166,3 +166,8 @@ Nostr clients have 3 fundamental requests
     * `follow_list(pubkeys)` *who to follow*
     * `deletion_request(explanation, event_ids)` *delete events*
   * `class Server`: ingests Events and provides response logic for Nostr relays
+    * `event -> EVENT` *return event(s) to client*
+    * `ok -> OK` *acknowledge request*
+    * `eose -> EOSE` *End Of Sent Events*
+    * `closed -> CLOSED` *close a subscription*
+    * `notice -> NOTICE` *notifications and errors*
