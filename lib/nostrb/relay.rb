@@ -123,7 +123,7 @@ module Nostrb
       responses = Set.new
 
       filters.each { |f|
-        @reader.process_events.each { |h|
+        @reader.process_events(f).each { |h|
           responses << Server.event(sid, h) if f.match? h
         }
         @reader.process_r_events(f).each { |h|
