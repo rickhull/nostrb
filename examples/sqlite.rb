@@ -57,3 +57,15 @@ reader.process_events.each { |h|
 # compare to original
 puts "Faithful retrieval: #{hsh == e2.to_h ? 'SUCCESS' : 'FAIL'}"
 puts
+
+puts "events"
+results = reader.select_events
+p results.columns
+results.each { |row| p row }
+puts
+
+puts "tags"
+results = reader.db.query("SELECT * FROM tags")
+p results.columns
+results.each { |row| p row }
+puts

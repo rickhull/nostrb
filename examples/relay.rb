@@ -193,3 +193,29 @@ puts
 # bart_pk => bart
 # lisa_pk => marge.lisa
 # maggie_pk => marge.maggie
+
+reader = Nostrb::SQLite::Reader.new
+
+puts "events"
+results = reader.select_events
+p results.columns
+results.each { |row| p row }
+puts
+
+puts "tags"
+results = reader.db.query("SELECT * FROM tags")
+p results.columns
+results.each { |row| p row }
+puts
+
+puts "r_events"
+results = reader.db.query("SELECT * FROM r_events")
+p results.columns
+results.each { |row| p row }
+puts
+
+puts "r_tags"
+results = reader.db.query("SELECT * FROM r_tags")
+p results.columns
+results.each { |row| p row }
+puts
