@@ -56,7 +56,12 @@ describe Source do
     end
 
     it "creates deletion_request events" do
-      # TODO
+      fake_ids = Array.new(3) { SchnorrSig.bin2hex Random.bytes(32) }
+
+      s = Source.new(Test::PK)
+      e = s.deletion_request('testing deletes', *fake_ids)
+      expect(e.content).wont_be_empty
+      expect(e.tags).wont_be_empty
     end
   end
 end
