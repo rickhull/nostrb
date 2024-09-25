@@ -60,7 +60,7 @@ module Nostrb
         else
           [Server.notice("unexpected: #{a[0].inspect}")]
         end
-      rescue RuntimeError => e
+      rescue StandardError => e
         [Server.error(e)]
       end
     end
