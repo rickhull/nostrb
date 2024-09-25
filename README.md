@@ -132,14 +132,21 @@ It's possible to create and examine a *provisional* timestamp, serialization,
 or id, but when signing time comes, a new timestamp will be set, and any
 previous serialization or digest will be invalid.
 
+### Primary Event Types
+
+* `text_note(content)` kind=1 *make a post*
+* `user_metadata(profile)` kind=0 *upload user profile*
+* `follow_list(pubkeys)` kind=3 *follow these users*
+* `deletion_request(event_ids)` kind=5 *delete these events*
+
 ### Client Requests
 
 Nostr clients have 3 fundamental requests
 
-* `publish(event)` *make a post*
-* `subscribe(subscription_id, filters)`
+* `publish(event) -> EVENT` *make a post, upload user profile, etc*
+* `subscribe(subscription_id, filters) -> REQ`
   *request published events per filter(s)*
-* `close(subscription_id)` *enough events; close subscription*
+* `close(subscription_id) -> CLOSE` *enough events; close subscription*
 
 ### Library Structure
 
