@@ -87,28 +87,32 @@ module Nostrb
           text :content,    null: false
           int  :kind,       null: false
           text :tags,       null: false
+          text :d_tag,      null: true, default: nil
           text :pubkey,     null: false
           int  :created_at, null: false, index: {
                  name: :idx_r_events_created_at
                }
-          text :id,         null: false
+          text :id,         null: false, primary_key: true
           text :sig,        null: false
-          primary_key [:kind, :pubkey], name: :r_events_pk
+          index [:kind, :pubkey, :d_tag], {
+                  unique: true,
+                  name: :unq_r_events_kind_pubkey_d_tag,
+                }
         end
 
         @db.create_table :r_tags do
-          int  :r_kind,     null: false
-          text :r_pubkey,   null: false
+          foreign_key :r_event_id, :r_events,
+                      key: :id,
+                      type: :text,
+                      null: false,
+                      on_delete: :cascade,
+                      on_update: :cascade
           int  :created_at, null: false, index: {
                  name: :idx_r_tags_created_at
                }
           text :tag,        null: false
           text :value,      null: false
           text :json,       null: false
-          foreign_key [:r_kind, :r_pubkey], :r_events,
-                      key: [:kind, :pubkey],
-                      on_delete: :cascade,
-                      on_update: :cascade
         end
       end
     end
@@ -181,13 +185,11 @@ module Nostrb
         @db[:r_events].insert_conflict.
           insert(valid.merge('tags' => Nostrb.json(valid['tags'])))
         valid['tags'].each { |a|
-          @db[:r_tags].insert_conflict.
-            insert(r_kind: valid['kind'],
-                   r_pubkey: valid['pubkey'],
-                   created_at: valid['created_at'],
-                   tag: a[0],
-                   value: a[1],
-                   json: Nostrb.json(a))
+          @db[:r_tags].insert(r_event_id: valid['id'],
+                              created_at: valid['created_at'],
+                              tag: a[0],
+                              value: a[1],
+                              json: Nostrb.json(a))
         }
       end
     end
