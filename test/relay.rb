@@ -12,8 +12,6 @@ DB_FILE = ENV['INPUT_DB_FILE'] || 'testing.db'
 # use SQLite backing
 SQLite::Setup.new(DB_FILE).setup
 
-Test::VALID_JSON = Nostrb.json(Source.publish(Test::SIGNED))
-
 describe Server do
   def valid_response!(resp)
     types = ["EVENT", "OK", "EOSE", "CLOSED", "NOTICE"]
@@ -112,23 +110,10 @@ describe Server do
     expect(s).must_be_kind_of Server
   end
 
-  # TODO: fix now we have sqlite backing
-  it "stores inbound events" do
-    skip
-
-    s = Server.new(DB_FILE)
-    s.ingest(Nostrb.json(Source.publish(Test.new_event)))
-    events = s.events
-    expect(events).must_be_kind_of Array
-    expect(events.length).must_equal 1
-    hsh = events[0]
-    expect(hsh).must_be_kind_of Hash
-    expect(hsh).must_equal Test::SIGNED.to_h
-  end
-
+  # respond OK: true
   it "has a single response to EVENT requests" do
-    # respond OK: true
-    responses = Server.new(DB_FILE).ingest(Test::VALID_JSON)
+    json = Nostrb.json(Source.publish(Test::SIGNED))
+    responses = Server.new(DB_FILE).ingest(json)
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
 
@@ -139,119 +124,50 @@ describe Server do
     expect(resp[2]).must_equal true
   end
 
-  it "rejects unknown request types" do
-    # invalid request type: respond error / NOTICE
-    ary = Nostrb.parse(Test::VALID_JSON)
-    ary[0] = ary[0].downcase
-    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 1
-
-    resp = responses[0]
-    expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_equal "NOTICE"
-    expect(resp[1]).must_be_kind_of String
-    expect(resp[1]).wont_be_empty
-  end
-
-  it "rejects events with missing fields" do
-    # event missing "id": respond error / NOTICE
-    ary = Nostrb.parse(Test::VALID_JSON)
-    hsh = ary[1]
-    hsh.delete("id")
-    ary[1] = hsh
-    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 1
-
-    resp = responses[0]
-    expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_equal "NOTICE"
-    expect(resp[1]).must_be_kind_of String
-    expect(resp[1]).wont_be_empty
-  end
-
-  it "rejects events with invalid format" do
-    # short signature: response error / NOTICE
-    ary = Nostrb.parse(Test::VALID_JSON)
-    hsh = ary[1]
-    hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(32))
-    ary[1] = hsh
-    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 1
-
-    resp = responses[0]
-    expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_equal "NOTICE"
-    expect(resp[1]).must_be_kind_of String
-    expect(resp[1]).wont_be_empty
-  end
-
-  it "rejects events with invalid signature" do
-    # invalid signature, respond OK: false
-    ary = Nostrb.parse(Test::VALID_JSON)
-    hsh = ary[1]
-    hsh["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
-    ary[1] = hsh
-    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 1
-
-    resp = responses[0]
-    expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_equal "OK"
-    expect(resp[1]).must_equal hsh["id"]
-    expect(resp[2]).must_equal false
-    expect(resp[3]).must_be_kind_of String
-    expect(resp[3]).wont_be_empty
-  end
-
-  it "rejects events with invalid id" do
-    # invalid id, respond OK: false
-    ary = Nostrb.parse(Test::VALID_JSON)
-    hsh = ary[1]
-    hsh["id"] = SchnorrSig.bin2hex(Random.bytes(32))
-    ary[1] = hsh
-    responses = Server.new(DB_FILE).ingest(Nostrb.json(ary))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 1
-
-    resp = responses[0]
-    expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_equal "OK"
-    expect(resp[1]).must_equal hsh["id"]
-    expect(resp[2]).must_equal false
-    expect(resp[3]).must_be_kind_of String
-    expect(resp[3]).wont_be_empty
-  end
-
-  # TODO: fix now we have sqlite backing
-  it "has multiple responses to REQ requets" do
-    skip
-
-    # ingest 2 events (Source.publish)
-    # get a subscription request (Source.subscribe)
-    # respond EVENT
-    # respond EVENT
-    # respond EOSE
-
+  # store and retrieve with a subscription filter
+  it "stores inbound events" do
     s = Server.new(DB_FILE)
-    e1 = Event.new('one', pk: Test::PK).sign(Test::SK)
-    e2 = Event.new('two', pk: Test::PK).sign(Test::SK)
-    [e1, e2].each { |e|
-      responses = s.ingest(Nostrb.json(Source.publish(e)))
-      expect(responses).must_be_kind_of Array
-      expect(responses.length).must_equal 1
-      resp = responses[0]
-      expect(resp).must_be_kind_of Array
-      expect(resp[0]).must_equal "OK"
-      expect(resp[1]).must_equal e.id
-      expect(resp[2]).must_equal true
-    }
+    sk, pk = SchnorrSig.keypair
+    e = Event.new('sqlite', pk: pk).sign(sk)
+    resp = s.ingest Nostrb.json(Source.publish(e))
+    expect(resp).must_be_kind_of Array
+    expect(resp[0]).must_be_kind_of Array
+    expect(resp[0][0]).must_equal "OK"
+
+    pubkey = SchnorrSig.bin2hex(pk)
+
+    f = Filter.new
+    f.add_authors pubkey
+    f.add_ids e.id
+
+    resp = s.ingest Nostrb.json(Source.subscribe(pubkey, f))
+    expect(resp).must_be_kind_of Array
+    expect(resp.length).must_equal 2
+    event, eose = *resp
+    expect(event[0]).must_equal 'EVENT'
+    expect(event[1]).must_equal pubkey
+    expect(event[2]).must_be_kind_of Hash
+    expect(event[2]['id']).must_equal e.id
+    expect(eose[0]).must_equal 'EOSE'
+  end
+
+  it "has multiple responses to REQ requets" do
+    s = Server.new(DB_FILE)
+    sk, pk = SchnorrSig.keypair
+    e = Event.new('first', pk: pk).sign(sk)
+    resp = s.ingest Nostrb.json(Source.publish(e))
+    expect(resp).must_be_kind_of Array
+    expect(resp[0]).must_be_kind_of Array
+    expect(resp[0][0]).must_equal "OK"
+
+    e2 = Event.new('second', pk: pk).sign(sk)
+    resp = s.ingest Nostrb.json(Source.publish(e2))
+    expect(resp).must_be_kind_of Array
+    expect(resp[0]).must_be_kind_of Array
+    expect(resp[0][0]).must_equal "OK"
 
     # with no filters, nothing will match
-    sid = e1.pubkey
+    sid = e.pubkey
     responses = s.ingest(Nostrb.json(Source.subscribe(sid)))
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
@@ -262,28 +178,29 @@ describe Server do
 
     # now add a filter based on pubkey
     f = Filter.new
-    f.add_authors e1.pubkey
+    f.add_authors e.pubkey
+    f.add_ids e.id, e2.id
 
-    responses = s.ingest(Nostrb.json(Source.subscribe(sid, f)))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 3
+    resp = s.ingest Nostrb.json(Source.subscribe(sid, f))
+    expect(resp).must_be_kind_of Array
+    expect(resp.length).must_equal 3
 
     # remove EOSE and validate
-    eose = responses.pop
+    eose = resp.pop
     expect(eose).must_be_kind_of Array
     expect(eose[0]).must_equal "EOSE"
     expect(eose[1]).must_equal sid
 
-    responses.each { |event|
+    # verify the response event ids
+    resp.each { |event|
       expect(event).must_be_kind_of Array
       expect(event[0]).must_equal "EVENT"
       expect(event[1]).must_equal sid
       hsh = event[2]
       expect(hsh).must_be_kind_of Hash
       expect(SignedEvent.validate!(hsh)).must_equal hsh
+      expect([e.id, e2.id]).must_include hsh["id"]
     }
-    expect(responses[0][2]).must_equal e1.to_h
-    expect(responses[1][2]).must_equal e2.to_h
   end
 
   it "has a single response to CLOSE requests" do
@@ -299,5 +216,145 @@ describe Server do
     expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "CLOSED"
     expect(resp[1]).must_equal sid
+  end
+
+  describe "error handling" do
+    # invalid request type
+    it "handles unknown unknown request types with an error notice" do
+      a = Source.publish Test::SIGNED
+      a[0] = 'NONSENSE'
+      responses = Server.new(DB_FILE).ingest(Nostrb.json(a))
+      expect(responses).must_be_kind_of Array
+      expect(responses.length).must_equal 1
+
+      resp = responses[0]
+      expect(resp).must_be_kind_of Array
+      expect(resp[0]).must_equal "NOTICE"
+      expect(resp[1]).must_be_kind_of String
+      expect(resp[1]).wont_be_empty
+    end
+
+    # replace leading open brace with space
+    it "handles JSON parse errors with an error notice" do
+      j = Nostrb.json(Nostrb::Source.publish(Test::SIGNED))
+      expect(j[9]).must_equal '{'
+      j[9] = ' '
+      resp = Server.new(DB_FILE).ingest(j)
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, msg = *resp.first
+      expect(type).must_equal "NOTICE"
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+    end
+
+    # add "stuff":"things"
+    it "handles unexpected fields with an error notice" do
+      a = Nostrb::Source.publish(Test::SIGNED)
+      expect(a[1]).must_be_kind_of Hash
+      a[1]["stuff"] = "things"
+
+      resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, msg = *resp.first
+      expect(type).must_equal "NOTICE"
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+    end
+
+    # remove "tags"
+    it "handles missing fields with an error notice" do
+      a = Nostrb::Source.publish(Test::SIGNED)
+      expect(a[1]).must_be_kind_of Hash
+      a[1].delete("tags")
+
+      resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, msg = *resp.first
+      expect(type).must_equal "NOTICE"
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+    end
+
+    # cut "id" in half
+    it "handles field format errors with an error notice" do
+      a = Nostrb::Source.publish(Test::SIGNED)
+      expect(a[1]).must_be_kind_of Hash
+      a[1]["id"] = a[1]["id"].slice(0, 32)
+
+      resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, msg = *resp.first
+      expect(type).must_equal "NOTICE"
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+    end
+
+    # random "sig"
+    it "handles invalid signature with OK:false" do
+      a = Nostrb::Source.publish(Test::SIGNED)
+      expect(a[1]).must_be_kind_of Hash
+      a[1]["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
+
+      resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, id, value, msg = *resp.first
+      expect(type).must_equal "OK"
+      expect(id).must_equal a[1]["id"]
+      expect(value).must_equal false
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+      expect(msg).must_match /SignatureCheck/
+    end
+
+    # "id" and "sig" spoofed from another event
+    it "handles spoofed id with OK:false" do
+      orig = Source.publish(Test.new_event('orig'))
+      spoof = Source.publish(Test::SIGNED)
+
+      orig[1]["id"] = spoof[1]["id"]
+      orig[1]["sig"] = spoof[1]["sig"]
+
+      # now sig and id agree with each other, but not orig's content/metadata
+      # the signature should verify, but the id should not
+
+      resp = Server.new(DB_FILE).ingest(Nostrb.json(orig))
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, id, value, msg = *resp.first
+      expect(type).must_equal "OK"
+      expect(id).must_equal orig[1]["id"]
+      expect(value).must_equal false
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+      expect(msg).must_match /IdCheck/
+    end
+
+    # random "id"
+    it "handles invalid id with OK:false" do
+      a = Source.publish(Test::SIGNED)
+      a[1]["id"] = SchnorrSig.bin2hex(Random.bytes(32))
+
+      resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
+      expect(resp).must_be_kind_of Array
+      expect(resp.length).must_equal 1
+
+      type, id, value, msg = *resp.first
+      expect(type).must_equal "OK"
+      expect(id).must_equal a[1]["id"]
+      expect(value).must_equal false
+      expect(msg).must_be_kind_of String
+      expect(msg).wont_be_empty
+    end
   end
 end
