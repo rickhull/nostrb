@@ -54,6 +54,49 @@ signed = hello.sign(sk)
 msg = Source.publish(signed)  # => '["EVENT", {...}]'
 ```
 
+## Dependencies
+
+This library has one necessary dependency on `schnorr_sig`, which itself
+depends on two mostly Ruby gems, `ecdsa` and `ecdsa_ext`.
+
+### Optional
+
+`schnorr_sig` also has an optional dependency on `rbsecp256k1`, which is
+highly recommended and will be used automatically if the gem is installed.
+This provides a dramatic speedup to Schnorr Signature operations as well
+as additional correctness and security guarantees.
+
+Nostrb has three optional dependencies:
+
+* `oj` - An alternative to Ruby's stdlib JSON parser/generator
+* `sqlite3` - necessary/useful only for running a Relay
+* `sequel` - optional layer on top of sqlite3
+
+If `oj` is not installed, then Ruby's stdlib will be used.  If `sqlite3` is
+not installed, then `require 'nostrb/relay'` will fail with a `LoadError`.
+If `sequel` is not installed, then `require 'nostrb/sequel'` will fail with
+a `LoadError`.
+
+Call `Nostrb.gem_check` to check availability of optional dependencies:
+
+```ruby
+require 'nostrb'
+
+Nostrb.gem_check
+# { "rbsecp256k1"=>Secp256k1,
+#   "oj"=>Oj,
+#   "sqlite3"=>SQLite3,
+#   "sequel"=>Sequel }
+
+# or perhaps:
+# { "rbsecp256k1"=>false,
+#   "oj"=>false,
+#   "sqlite3"=>SQLite3,
+#   "sequel"=>false }
+```
+
+The second version is the minimum required to run a Nostr relay.
+
 ## Fundamentals
 
 ### Keys

@@ -7,6 +7,8 @@ rescue LoadError
 end
 
 module Nostrb
+  GEMS = %w[rbsecp256k1 oj sqlite3 sequel]
+
   class Error < RuntimeError; end
   class SizeError < Error; end
   class FormatError < Error; end
@@ -69,5 +71,41 @@ module Nostrb
 
   def self.tags!(ary)
     ary!(ary, max: 9999).each { |a| ary!(a, max: 99).each { |s| txt!(s) } }
+  end
+
+  def self.rbsecp256k1?
+    begin
+      require 'rbsecp256k1'; Secp256k1
+    rescue LoadError, NameError
+      false
+    end
+  end
+
+  def self.oj?
+    begin
+      require 'oj'; Oj
+    rescue LoadError, NameError
+      false
+    end
+  end
+
+  def self.sqlite3?
+    begin
+      require 'sqlite3'; SQLite3
+    rescue LoadError, NameError
+      false
+    end
+  end
+
+  def self.sequel?
+    begin
+      require 'sequel'; Sequel
+    rescue LoadError, NameError
+      false
+    end
+  end
+
+  def self.gem_check
+    GEMS.map { |gem| [gem, self.send("#{gem}?")] }.to_h
   end
 end
