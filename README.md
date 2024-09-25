@@ -14,9 +14,9 @@ Events are cryptographically signed and verified with
 ## Rationale
 
 The library is oriented around Nostr Events, which are the fundamental objects
-in the Nostr universe.  It provides everything needed to process incoming
-events, including signature verification, as well as most everything needed
-to generate outbound events, as a Nostr client or source.
+in the Nostr universe.  It provides everything needed to generate outbound
+events, including digests, pubkeys, and signatures, like for a Nostr client.
+It also handles inbound events and messages, like for a Nostr relay.
 
 While networking is not provided (yet), storage for relays is handled by
 SQLite, with optional Sequel support.
@@ -26,6 +26,11 @@ SQLite, with optional Sequel support.
 This library is provided as a RubyGem.  It has a single direct dependency on
 [schnorr_sig](https://github.com/rickhull/schnorr_sig),
 which has its own dependencies.
+
+There are optional dependencies, like `rbsecp256k1` for
+better / faster / stronger Schnorr signatures.  `sqlite3` is required for
+Relay operation.  `oj` can be installed for better / faster / stronger JSON
+handling, and `sequel` can be used as a layer on top of SQLite.
 
 ## Install
 
@@ -57,7 +62,7 @@ msg = Source.publish(signed)  # => '["EVENT", {...}]'
 ## Dependencies
 
 This library has one necessary dependency on `schnorr_sig`, which itself
-depends on two mostly Ruby gems, `ecdsa` and `ecdsa_ext`.
+depends on two mostly-Ruby gems, `ecdsa` and `ecdsa_ext`.
 
 ### Optional
 
