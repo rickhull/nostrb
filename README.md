@@ -152,14 +152,12 @@ Nostr clients have 3 fundamental requests
 
 * Client: `EVENT` (post an event)
 * Relay: `OK` (acknowledge)
-
-
+---
 * Client: `REQ` (subscribe to posted events)
 * Relay: `EVENT` (send an event)
 * Relay: `EVENT` (send another event)
 * Relay: `EOSE` (end of sent events)
-
-
+---
 * Client: `CLOSE` (close subscription opened with REQ)
 * Relay: `CLOSED` (confirm subscription closed)
 
@@ -167,24 +165,19 @@ Nostr clients have 3 fundamental requests
 
 * Client: `EVENT` (unparseable)
 * Relay: `NOTICE` (error msg)
-
-
+---
 * Client: `EVENT` (extra fields)
 * Relay: `NOTICE` (error msg)
-
-
+---
 * Client: `EVENT` (fields missing)
 * Relay: `NOTICE` (error msg)
-
-
+---
 * Client: `EVENT` (field format errors)
 * Relay: `NOTICE` (error msg)
-
-
+---
 * Client: `EVENT` (signature fails verification)
 * Relay: `OK` (OK:false)
-
-
+---
 * Client: `EVENT` (id fails verification)
 * Relay: `OK` (OK:false)
 
