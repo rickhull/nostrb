@@ -10,8 +10,9 @@ module Nostrb
 
     EVENT = Event.new('testing', pk: PK)
     SIGNED = EVENT.sign(SK)
+    HASH = SIGNED.to_h
 
-    HASH = {
+    STATIC_HASH = {
       "content" => "hello world",
       "pubkey" => "18a2f562682d3ccaee89297eeee89a7961bc417bad98e9a3a93f010b0ea5313d",
       "kind" => 1,

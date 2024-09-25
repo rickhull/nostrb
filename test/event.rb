@@ -11,7 +11,7 @@ describe Event do
 
   describe "class functions" do
     it "computes a 32 byte digest of a JSON serialization" do
-      a = SignedEvent.serialize(Test::HASH)
+      a = SignedEvent.serialize(Test::STATIC_HASH)
       d = Event.digest(a)
       expect(d).must_be_kind_of String
       expect(d.length).must_equal 32
@@ -127,7 +127,7 @@ describe SignedEvent do
 
   describe "class functions" do
     it "validates a JSON parsed hash" do
-      h = SignedEvent.validate!(Test::HASH)
+      h = SignedEvent.validate!(Test::STATIC_HASH)
       expect(h).must_be_kind_of Hash
       %w[id pubkey kind content tags created_at sig].each { |k|
         expect(h.key?(k)).must_equal true
@@ -135,20 +135,20 @@ describe SignedEvent do
     end
 
     it "verifies a JSON parsed hash" do
-      h = SignedEvent.verify(Test::HASH)
+      h = SignedEvent.verify(Test::STATIC_HASH)
       expect(h).must_be_kind_of Hash
     end
 
     it "serializes a JSON parsed hash" do
-      a = SignedEvent.serialize(Test::HASH)
+      a = SignedEvent.serialize(Test::STATIC_HASH)
       expect(a).must_be_kind_of Array
       expect(a.length).must_equal 6
     end
 
     it "digests a hash JSON parsed hash, which it will serialize" do
-      a = SignedEvent.serialize(Test::HASH)
+      a = SignedEvent.serialize(Test::STATIC_HASH)
       d = Event.digest(a)
-      d2 = SignedEvent.digest(Test::HASH)
+      d2 = SignedEvent.digest(Test::STATIC_HASH)
       expect(d2).must_equal d
     end
   end
