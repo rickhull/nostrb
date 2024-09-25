@@ -258,31 +258,35 @@ SQL
 CREATE TABLE r_events (content    TEXT NOT NULL,
                        kind       INT NOT NULL,
                        tags       TEXT NOT NULL,
+                       d_tag      TEXT DEFAULT NULL,
                        pubkey     TEXT NOT NULL,
                        created_at INT NOT NULL,
-                       id         TEXT NOT NULL,
-                       sig        TEXT NOT NULL,
-          PRIMARY KEY (kind, pubkey))
+                       id         TEXT PRIMARY KEY NOT NULL,
+                       sig        TEXT NOT NULL)
 SQL
 
         @db.execute <<SQL
-CREATE TABLE r_tags (r_kind      INT NOT NULL,
-                     r_pubkey    TEXT NOT NULL,
-                     created_at  INT NOT NULL,
-                     tag         TEXT NOT NULL,
-                     value       TEXT NOT NULL,
-                     json        TEXT NOT NULL,
-        FOREIGN KEY (r_kind, r_pubkey) REFERENCES r_events (kind, pubkey)
-                                       ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE r_tags (r_event_id TEXT NOT NULL REFERENCES r_events (id)
+                                ON DELETE CASCADE ON UPDATE CASCADE,
+                     created_at INT NOT NULL,
+                     tag        TEXT NOT NULL,
+                     value      TEXT NOT NULL,
+                     json       TEXT NOT NULL)
 SQL
       end
 
       def create_indices
-        @db.execute "CREATE INDEX idx_events_created_at ON events (created_at)"
-        @db.execute "CREATE INDEX idx_tags_created_at ON tags (created_at)"
+        @db.execute "CREATE INDEX idx_events_created_at
+                               ON events (created_at)"
+        @db.execute "CREATE INDEX idx_tags_created_at
+                               ON tags (created_at)"
         @db.execute "CREATE INDEX idx_r_events_created_at
                                ON r_events (created_at)"
-        @db.execute "CREATE INDEX idx_r_tags_created_at ON r_tags (created_at)"
+        @db.execute "CREATE INDEX idx_r_tags_created_at
+                               ON r_tags (created_at)"
+
+        @db.execute "CREATE UNIQUE INDEX unq_r_events_kind_pubkey_d_tag
+                                      ON r_events (kind, pubkey, d_tag)"
       end
     end
 
@@ -342,6 +346,14 @@ SQL
         @db.query sql
       end
 
+      def process_events_table(table = 'events', filter = nil)
+        a = []
+        select_events_table(table, filter).each_hash { |h|
+          a << Reader.hydrate(h)
+        }
+        a
+      end
+
       # these are presumably filtered so cannot be prepared
       # use Database#query to get a ResultSet
       def select_events(filter = nil)
@@ -349,9 +361,7 @@ SQL
       end
 
       def process_events(filter = nil)
-        a = []
-        select_events(filter).each_hash { |h| a << Reader.hydrate(h) }
-        a
+        process_events_table('events', filter)
       end
 
       # use a prepared statement to get a ResultSet
@@ -372,20 +382,15 @@ SQL
       end
 
       def process_r_events(filter = nil)
-        a = []
-        select_r_events(filter).each_hash { |h| a << Reader.hydrate(h) }
-        a
+        process_events_table('r_events', filter)
       end
 
-      def select_r_tags(kind:, pubkey:, created_at:)
+      def select_r_tags(event_id:, created_at:)
         @select_r_tags ||= @db.prepare("SELECT tag, value, json
                                         FROM r_tags
-                                       WHERE created_at = :created_at
-                                         AND r_kind = :kind
-                                         AND r_pubkey = :pubkey")
-        @select_r_tags.execute(kind: kind,
-                               pubkey: pubkey,
-                               created_at: created_at)
+                                       WHERE r_event_id = :event_id
+                                         AND created_at = :created_at")
+        @select_r_tags.execute(event_id: event_id, created_at: created_at)
       end
     end
 
@@ -414,17 +419,18 @@ SQL
       def add_r_event(valid)
         @add_r_event ||=
           @db.prepare("INSERT OR REPLACE INTO r_events
-                                     VALUES (:content, :kind, :tags, :pubkey,
-                                             :created_at, :id, :sig)")
+                                  VALUES (:content, :kind, :tags, :d_tag,
+                                          :pubkey, :created_at, :id, :sig)")
         @add_rtag ||= @db.prepare("INSERT INTO r_tags
-                                      VALUES (:r_kind, :r_pubkey, :created_at,
+                                      VALUES (:r_event_id, :created_at,
                                               :tag, :value, :json)")
         tags = valid.fetch('tags')
+        d_tags = tags.select { |a| a[0] == 'd' }
+        valid['d_tag'] = d_tags.empty? ? nil : d_tags[0][1]
         valid['tags'] = Nostrb.json(tags)
         @add_r_event.execute(valid) # upsert event
         tags.each { |a|             # insert tags
-          @add_rtag.execute(r_pubkey: valid.fetch('pubkey'),
-                            r_kind: valid.fetch('kind'),
+          @add_rtag.execute(r_event_id: valid.fetch('id'),
                             created_at: valid.fetch('created_at'),
                             tag: a[0],
                             value: a[1],
