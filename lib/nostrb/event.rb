@@ -11,6 +11,14 @@ module Nostrb
 
     def self.digest(ary) = Nostrb.digest(Nostrb.json(Nostrb.ary!(ary)))
 
+    def self.tag_values(tag, tags)
+      tags.select { |a| a[0] == tag }.map { |a| a[1] }
+    end
+
+    def self.d_tag(tags)
+      tag_values('d', tags).first
+    end
+
     attr_reader :content, :kind, :tags, :pk
 
     def initialize(content = '', kind: 1, tags: [], pk:)
