@@ -3,7 +3,7 @@ require 'nostrb/sqlite'
 
 module Nostrb
   module Sequel
-    class Storage
+    class Storage < SQLite::Storage
       FILENAME = 'sequel.db'
       TABLES = [:events, :tags, :r_events, :r_tags]
 
@@ -13,11 +13,28 @@ module Nostrb
         ].join("\t")
       end
 
-      attr_reader :db, :filename
-
-      def initialize(filename = FILENAME)
+      def initialize(filename = FILENAME, set_pragmas: true)
         @filename = filename
-        @db = ::Sequel.connect("sqlite://#{filename}")
+        @db = ::Sequel.sqlite(@filename)
+        @db.transaction_mode = :immediate
+        self.set_pragmas if set_pragmas
+      end
+
+      def set_pragmas
+        @db.pool.available_connections.each { |s3db|
+          pragma = SQLite::Pragma.new(s3db)
+          PRAGMAS.each { |name, val| pragma.set(name, val) }
+        }
+        PRAGMAS.clone
+      end
+
+      def pragma_scalars
+        pragma = SQLite::Pragma.new(@db.pool.available_connections.sample)
+        SQLite::Pragma::SCALAR.map { |p|
+          val, enum = pragma.get(p), SQLite::Pragma::ENUM[p]
+          val = format("%i (%s)", val, enum[val]) if enum
+          format("%s: %s", p, val)
+        }
       end
 
       def setup
