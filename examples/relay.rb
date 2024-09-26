@@ -13,6 +13,12 @@ require 'nostrb/relay'
 # Marge follows Bart, Lisa, Maggie
 # Homer requests Marge's recent follows; discovers Lisa and Maggie
 
+TABLE_DUMP = true
+#TABLE_DUMP = false
+
+STORAGE = :sqlite
+#STORAGE = :sequel
+
 include Nostrb
 
 context = {}
@@ -29,8 +35,7 @@ context = {}
 homer, marge = context['homer'], context['marge']
 bart, lisa, maggie = context['bart'], context['lisa'], context['maggie']
 
-#relay = Server.new(storage: :sequel)
-relay = Server.new(storage: :sqlite)
+relay = Server.new(storage: STORAGE)
 
 puts "Bart uploads his profile"
 hsh = {
@@ -194,28 +199,67 @@ puts
 # lisa_pk => marge.lisa
 # maggie_pk => marge.maggie
 
-reader = Nostrb::SQLite::Reader.new
+if TABLE_DUMP
+  reader = case STORAGE
+           when :sqlite then Nostrb::SQLite::Reader.new
+           when :sequel then Nostrb::Sequel::Reader.new
+           else
+             raise 'unexpected'
+           end
 
-puts "events"
-results = reader.select_events
-p results.columns
-results.each { |row| p row }
-puts
+  puts "events"
+  count = 0
+  events = reader.select_events
+  p events.columns
+  events.each { |row|
+    p row.is_a?(Hash) ? row.values : row
+    count += 1
+  }
+  puts "Count: #{count}"
+  puts
 
-puts "tags"
-results = reader.db.query("SELECT * FROM tags")
-p results.columns
-results.each { |row| p row }
-puts
+  puts "tags"
+  count = 0
+  tags = if STORAGE == :sqlite
+           reader.db.query("SELECT * FROM tags")
+         else
+           reader.db[:tags]
+         end
+  p tags.columns
+  tags.each { |row|
+    p row.is_a?(Hash) ? row.values : row
+    count += 1
+  }
+  puts "Count: #{count}"
+  puts
 
-puts "r_events"
-results = reader.db.query("SELECT * FROM r_events")
-p results.columns
-results.each { |row| p row }
-puts
+  puts "r_events"
+  count = 0
+  r_events = if STORAGE == :sqlite
+               reader.db.query("SELECT * FROM r_events")
+             else
+               reader.db[:r_events]
+             end
+  p r_events.columns
+  r_events.each { |row|
+    p row.is_a?(Hash) ? row.values : row
+    count += 1
+  }
+  puts "Count: #{count}"
+  puts
 
-puts "r_tags"
-results = reader.db.query("SELECT * FROM r_tags")
-p results.columns
-results.each { |row| p row }
-puts
+  puts "r_tags"
+  count = 0
+  r_tags = if STORAGE == :sqlite
+             reader.db.query("SELECT * FROM r_tags")
+           else
+             reader.db[:r_tags]
+           end
+  p r_tags.columns
+  r_tags.each { |row|
+    p row.is_a?(Hash) ? row.values : row
+    count += 1
+  }
+  puts "Count: #{count}"
+  puts
+end
