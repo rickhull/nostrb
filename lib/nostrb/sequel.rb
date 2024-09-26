@@ -13,6 +13,8 @@ module Nostrb
         ].join("\t")
       end
 
+      attr_reader :db, :filename
+
       def initialize(filename = FILENAME)
         @filename = filename
         @db = ::Sequel.connect("sqlite://#{filename}")
@@ -182,8 +184,13 @@ module Nostrb
 
       # use insert_conflict to replace latest event
       def add_r_event(valid)
-        @db[:r_events].insert_conflict.
-          insert(valid.merge('tags' => Nostrb.json(valid['tags'])))
+        tags = valid.fetch('tags')
+        d_tag = Event.d_tag(tags)
+        hsh = {
+          'tags' => Nostrb.json(tags),
+          'd_tag' => d_tag,
+        }
+        @db[:r_events].insert_conflict.insert(valid.merge(hsh))
         valid['tags'].each { |a|
           @db[:r_tags].insert(r_event_id: valid['id'],
                               created_at: valid['created_at'],
