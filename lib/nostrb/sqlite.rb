@@ -131,13 +131,16 @@ module Nostrb
 
       attr_reader :filename, :db, :pragma
 
-      def initialize(filename = FILENAME, **kwargs)
+      def initialize(filename = FILENAME, set_pragmas: true, **kwargs)
         @filename = filename
-        set_pragmas = kwargs.delete(:set_pragmas)
         @db = SQLite3::Database.new(@filename, **CONFIG.merge(kwargs))
         @db.busy_handler_timeout = 5000 # 5 seconds, release GVL every ms
         @pragma = Pragma.new(@db)
-        set_pragmas() if set_pragmas
+        self.set_pragmas if set_pragmas
+      end
+
+      def set_pragmas
+        PRAGMAS.each { |name, val| @pragma.set(name, val) }
       end
 
       def setup
@@ -150,10 +153,6 @@ module Nostrb
 
       def writer
         Writer.new(@filename)
-      end
-
-      def set_pragmas
-        self.class::PRAGMAS.each { |name, val| @pragma.set(name, val) }
       end
 
       # below methods all return an array of strings
