@@ -60,6 +60,7 @@ module Nostrb
           lines += schema(t)
           lines << ''
         }
+        lines += self.pragma_scalars
         lines
       end
     end
