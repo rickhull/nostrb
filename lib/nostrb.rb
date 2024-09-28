@@ -7,8 +7,6 @@ rescue LoadError
 end
 
 module Nostrb
-  GEMS = %w[rbsecp256k1 oj sqlite3 sequel]
-
   class Error < RuntimeError; end
   class SizeError < Error; end
   class FormatError < Error; end
@@ -58,6 +56,7 @@ module Nostrb
     str!(str, binary: false, length: length, max: max)
   end
   def self.pubkey!(str) = txt!(str, length: 64)
+
   def self.id!(str) = txt!(str, length: 64)
   def self.sid!(str) = txt!(str, max: 64)
   def self.sig!(str) = txt!(str, length: 128)
@@ -73,39 +72,44 @@ module Nostrb
     ary!(ary, max: 9999).each { |a| ary!(a, max: 99).each { |s| txt!(s) } }
   end
 
-  def self.rbsecp256k1?
-    begin
-      require 'rbsecp256k1'; Secp256k1
-    rescue LoadError, NameError
-      false
-    end
-  end
+  # optional dependencies
+  module Optional
+    GEMS = %w[rbsecp256k1 oj sqlite3 sequel]
 
-  def self.oj?
-    begin
-      require 'oj'; Oj
-    rescue LoadError, NameError
-      false
+    def self.rbsecp256k1?
+      begin
+        require 'rbsecp256k1'; ::Secp256k1
+      rescue LoadError, NameError
+        false
+      end
     end
-  end
 
-  def self.sqlite3?
-    begin
-      require 'sqlite3'; SQLite3
-    rescue LoadError, NameError
-      false
+    def self.oj?
+      begin
+        require 'oj'; ::Oj
+      rescue LoadError, NameError
+        false
+      end
     end
-  end
 
-  def self.sequel?
-    begin
-      require 'sequel'; Sequel
-    rescue LoadError, NameError
-      false
+    def self.sqlite3?
+      begin
+        require 'sqlite3'; ::SQLite3
+      rescue LoadError, NameError
+        false
+      end
     end
-  end
 
-  def self.gem_check
-    GEMS.map { |gem| [gem, self.send("#{gem}?")] }.to_h
+    def self.sequel?
+      begin
+        require 'sequel'; ::Sequel
+      rescue LoadError, NameError
+        false
+      end
+    end
+
+    def self.gem_check
+      GEMS.map { |gem| [gem, self.send("#{gem}?")] }.to_h
+    end
   end
 end

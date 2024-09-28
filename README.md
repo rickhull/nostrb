@@ -82,12 +82,13 @@ not installed, then `require 'nostrb/relay'` will fail with a `LoadError`.
 If `sequel` is not installed, then `require 'nostrb/sequel'` will fail with
 a `LoadError`.
 
-Call `Nostrb.gem_check` to check availability of optional dependencies:
+Call `Nostrb::Optional.gem_check` to check availability of optional
+dependencies:
 
 ```ruby
 require 'nostrb'
 
-Nostrb.gem_check
+Nostrb::Optional.gem_check
 # { "rbsecp256k1"=>Secp256k1,
 #   "oj"=>Oj,
 #   "sqlite3"=>SQLite3,
