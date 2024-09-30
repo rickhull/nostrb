@@ -241,7 +241,7 @@ CREATE TABLE events (content    TEXT NOT NULL,
                      pubkey     TEXT NOT NULL,
                      created_at INT NOT NULL,
                      id         TEXT PRIMARY KEY NOT NULL,
-                     sig        TEXT NOT NULL)
+                     sig        TEXT NOT NULL) STRICT
 SQL
 
         @db.execute <<SQL
@@ -250,7 +250,7 @@ CREATE TABLE tags (event_id    TEXT NOT NULL REFERENCES events (id)
                    created_at  INT NOT NULL,
                    tag         TEXT NOT NULL,
                    value       TEXT NOT NULL,
-                   json        TEXT NOT NULL)
+                   json        TEXT NOT NULL) STRICT
 SQL
 
         @db.execute <<SQL
@@ -261,7 +261,7 @@ CREATE TABLE r_events (content    TEXT NOT NULL,
                        pubkey     TEXT NOT NULL,
                        created_at INT NOT NULL,
                        id         TEXT PRIMARY KEY NOT NULL,
-                       sig        TEXT NOT NULL)
+                       sig        TEXT NOT NULL) STRICT
 SQL
 
         @db.execute <<SQL
@@ -270,7 +270,7 @@ CREATE TABLE r_tags (r_event_id TEXT NOT NULL REFERENCES r_events (id)
                      created_at INT NOT NULL,
                      tag        TEXT NOT NULL,
                      value      TEXT NOT NULL,
-                     json       TEXT NOT NULL)
+                     json       TEXT NOT NULL) STRICT
 SQL
       end
 

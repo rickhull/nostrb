@@ -77,7 +77,7 @@ module Nostrb
       end
 
       def create_tables
-        @db.create_table :events do
+        @db.create_table :events, strict: true do
           text :content,    null: false
           int  :kind,       null: false
           text :tags,       null: false
@@ -89,8 +89,7 @@ module Nostrb
           text :sig,        null: false
         end
 
-        @db.create_table :tags do
-          # text :event_id, null: false # fk
+        @db.create_table :tags, strict: true do
           foreign_key :event_id, :events,
                       key: :id,
                       type: :text,
@@ -103,7 +102,7 @@ module Nostrb
           text :json,       null: false
         end
 
-        @db.create_table :r_events do
+        @db.create_table :r_events, strict: true do
           text :content,    null: false
           int  :kind,       null: false
           text :tags,       null: false
@@ -120,7 +119,7 @@ module Nostrb
                 }
         end
 
-        @db.create_table :r_tags do
+        @db.create_table :r_tags, strict: true do
           foreign_key :r_event_id, :r_events,
                       key: :id,
                       type: :text,
