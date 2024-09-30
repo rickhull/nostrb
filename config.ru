@@ -1,6 +1,4 @@
-# path/to/falcon serve \
-#   --bind wss://localhost:7070 \
-#   --config examples/config.ru
+# e.g. path/to/falcon serve --bind wss://localhost:7070
 
 require 'async/websocket/adapters/rack'
 require 'nostrb/relay'

@@ -6,8 +6,6 @@ require 'async/websocket/client'
 
 require 'nostrb/source'
 
-
-
 module Nostrb
   class Client
     def self.get(conn, msg)
