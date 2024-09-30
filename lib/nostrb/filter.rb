@@ -71,6 +71,10 @@ module Nostrb
       @limit = nil
     end
 
+    def to_s
+      self.to_h.to_s
+    end
+
     def add_ids(*event_ids)
       @ids += event_ids.each { |id| Nostrb.id!(id) }
     end
