@@ -9,7 +9,7 @@ Adapter = Async::WebSocket::Adapters::Rack
 app = lambda do |env|
   Adapter.open(env, protocols: ['ws', 'wss']) do |conn|
     cnx_id = format("[cnx:%i]", conn.object_id)
-    puts "New connection: #{cnx_id}"
+    puts format("New connection: %s", cnx_id)
     reqs, resps, t = 0, 0, Time.now
     while req = conn.read
       reqs += 1
