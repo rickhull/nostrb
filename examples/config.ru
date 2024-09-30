@@ -11,7 +11,7 @@ Adapter = Async::WebSocket::Adapters::Rack
 app = lambda do |env|
   Adapter.open(env, protocols: ['ws', 'wss']) do |conn|
     puts "New connection: #{conn}"
-    reqs, resps = 0, 0
+    reqs, resps, t = 0, 0, Time.now
     while req = conn.read
       reqs += 1
       puts req.buffer
@@ -20,7 +20,8 @@ app = lambda do |env|
         conn.write Nostrb.json(resp)
       }
     end
-    puts "Closed after #{reqs} requests and #{resps} responses"
+    puts format("Closed after %.3f s; %i req %i resp",
+                Time.now - t, reqs, resps)
   end
 end
 
