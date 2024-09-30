@@ -11,30 +11,30 @@ module Nostrb
     #######################
     # Client Requests
 
-    def self.publish(signed) = ["EVENT", signed.to_h]
+    def self.publish(signed) = ["EVENT", signed.to_h].freeze
 
     def self.subscribe(sid, *filters)
       ["REQ", Nostrb.sid!(sid), *filters.map { |f|
          Nostrb.check!(f, Filter).to_h
-      }]
+      }].freeze
     end
 
-    def self.close(sid) = ["CLOSE", Nostrb.sid!(sid)]
+    def self.close(sid) = ["CLOSE", Nostrb.sid!(sid)].freeze
 
     #######################
     # Utils / Init
 
     def self.random_sid
-      SchnorrSig.bin2hex Random.bytes(32)
+      SchnorrSig.bin2hex(Random.bytes(32)).freeze
     end
 
     attr_reader :pk
 
     def initialize(pk)
-      @pk = Nostrb.key!(pk)
+      @pk = Nostrb.key!(pk).freeze
     end
 
-    def pubkey = SchnorrSig.bin2hex(@pk)
+    def pubkey = SchnorrSig.bin2hex(@pk).freeze
 
     ############################
     # Event Creation

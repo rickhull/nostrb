@@ -394,6 +394,10 @@ SQL
     end
 
     class Writer < Storage
+      def self.serialize_tags(valid)
+        valid.merge("tags" => Nostrb.json(valid["tags"]))
+      end
+
       # a valid hash, as returned from SignedEvent.validate!
       def add_event(valid)
         @add_event ||= @db.prepare("INSERT INTO events
@@ -402,12 +406,10 @@ SQL
         @add_tag ||= @db.prepare("INSERT INTO tags
                                      VALUES (:event_id, :created_at,
                                              :tag, :value, :json)")
-        tags = valid["tags"]
-        valid["tags"] = Nostrb.json(tags)
-        @add_event.execute(valid) # insert event
-        tags.each { |a|           # insert tags
-          @add_tag.execute(event_id: valid.fetch('id'),
-                           created_at: valid.fetch('created_at'),
+        @add_event.execute(Writer.serialize_tags(valid)) # insert event
+        valid["tags"].each { |a|                         # insert tags
+          @add_tag.execute(event_id: valid['id'],
+                           created_at: valid['created_at'],
                            tag: a[0],
                            value: a[1],
                            json: Nostrb.json(a))
@@ -423,14 +425,13 @@ SQL
         @add_rtag ||= @db.prepare("INSERT INTO r_tags
                                       VALUES (:r_event_id, :created_at,
                                               :tag, :value, :json)")
-        tags = valid.fetch('tags')
-        d_tags = tags.select { |a| a[0] == 'd' }
-        valid['d_tag'] = d_tags.empty? ? nil : d_tags[0][1]
-        valid['tags'] = Nostrb.json(tags)
-        @add_r_event.execute(valid) # upsert event
-        tags.each { |a|             # insert tags
-          @add_rtag.execute(r_event_id: valid.fetch('id'),
-                            created_at: valid.fetch('created_at'),
+        tags = valid['tags']
+        record = Writer.serialize_tags(valid)
+        record['d_tag'] = Event.d_tag(tags)
+        @add_r_event.execute(record) # upsert event
+        tags.each { |a|              # insert tags
+          @add_rtag.execute(r_event_id: valid['id'],
+                            created_at: valid['created_at'],
                             tag: a[0],
                             value: a[1],
                             json: Nostrb.json(a))

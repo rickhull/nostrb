@@ -142,7 +142,7 @@ module Nostrb
       h["since"] = @since unless @since.nil?
       h["until"] = @until unless @until.nil?
       h["limit"] = @limit unless @limit.nil?
-      h
+      h.freeze
     end
   end
 end

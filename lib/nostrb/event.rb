@@ -19,25 +19,38 @@ module Nostrb
       tag_values('d', tags).first
     end
 
+    def self.freeze_tags(tags)
+      tags.each { |a|
+        a.each { |s| s.freeze }
+        a.freeze
+      }
+      tags.freeze
+    end
+
     attr_reader :content, :kind, :tags, :pk
 
     def initialize(content = '', kind: 1, tags: [], pk:)
-      @content = Nostrb.txt!(content)
+      @content = Nostrb.txt!(content) # frozen
       @kind    = Nostrb.kind!(kind)
       @tags    = Nostrb.tags!(tags)
-      @pk      = Nostrb.key!(pk)
+      @pk      = Nostrb.key!(pk)      # frozen
     end
 
     alias_method :to_s, :content
 
     def serialize(created_at)
-      [0, self.pubkey, Nostrb.int!(created_at), @kind, @tags, @content]
+      [0, self.pubkey, Nostrb.int!(created_at), @kind, @tags, @content].freeze
+    end
+
+    def freeze
+      Event.freeze_tags(@tags)
+      self
     end
 
     def to_a = serialize(Time.now.to_i)
     def pubkey = SchnorrSig.bin2hex(@pk)
     def digest(created_at) = Event.digest(serialize(created_at))
-    def sign(sk) = SignedEvent.new(self, sk)
+    def sign(sk) = SignedEvent.new(self.freeze, sk)
 
     #
     # Tags
@@ -82,10 +95,11 @@ module Nostrb
       Nostrb.pubkey!(parsed.fetch("pubkey"))
       Nostrb.kind!(parsed.fetch("kind"))
       Nostrb.tags!(parsed.fetch("tags"))
+      Event.freeze_tags(parsed['tags'])
       Nostrb.int!(parsed.fetch("created_at"))
       Nostrb.id!(parsed.fetch("id"))
       Nostrb.sig!(parsed.fetch("sig"))
-      parsed
+      parsed.freeze
     end
 
     def self.digest(valid) = Nostrb.digest(Nostrb.json(serialize(valid)))
@@ -96,7 +110,7 @@ module Nostrb
              valid["created_at"],
              valid["kind"],
              valid["tags"],
-             valid["content"], ]
+             valid["content"], ].freeze
     end
 
     # Validate the id (optional) and signature
@@ -127,8 +141,8 @@ module Nostrb
     def initialize(event, sk)
       @event = Nostrb.check!(event, Event)
       @created_at = Time.now.to_i
-      @digest = @event.digest(@created_at)
-      @signature = SchnorrSig.sign(Nostrb.key!(sk), @digest)
+      @digest = @event.digest(@created_at).freeze
+      @signature = SchnorrSig.sign(Nostrb.key!(sk), @digest).freeze
     end
 
     def content = @event.content
@@ -138,8 +152,8 @@ module Nostrb
     def to_s = @event.to_s
     def serialize = @event.serialize(@created_at)
 
-    def id = SchnorrSig.bin2hex(@digest)
-    def sig = SchnorrSig.bin2hex(@signature)
+    def id = SchnorrSig.bin2hex(@digest).freeze
+    def sig = SchnorrSig.bin2hex(@signature).freeze
 
     def to_h
       Hash[ "content" => @event.content,
@@ -148,7 +162,7 @@ module Nostrb
             "pubkey" => @event.pubkey,
             "created_at" => @created_at,
             "id" => self.id,
-            "sig" => self.sig ]
+            "sig" => self.sig ].freeze
     end
   end
 end

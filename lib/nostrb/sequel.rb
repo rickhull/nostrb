@@ -145,7 +145,7 @@ module Nostrb
               'pubkey' => event_row.fetch(:pubkey),
               'created_at' => event_row.fetch(:created_at),
               'id' => event_row.fetch(:id),
-              'sig' => event_row.fetch(:sig), ]
+              'sig' => event_row.fetch(:sig), ].freeze
       end
 
       def self.event_clauses(filter)

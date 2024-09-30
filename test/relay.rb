@@ -221,7 +221,7 @@ describe Server do
   describe "error handling" do
     # invalid request type
     it "handles unknown unknown request types with an error notice" do
-      a = Source.publish Test::SIGNED
+      a = Source.publish(Test::SIGNED).dup
       a[0] = 'NONSENSE'
       responses = Server.new(DB_FILE).ingest(Nostrb.json(a))
       expect(responses).must_be_kind_of Array
@@ -236,7 +236,7 @@ describe Server do
 
     # replace leading open brace with space
     it "handles JSON parse errors with an error notice" do
-      j = Nostrb.json(Nostrb::Source.publish(Test::SIGNED))
+      j = Nostrb.json(Nostrb::Source.publish(Test::SIGNED)).dup
       expect(j[9]).must_equal '{'
       j[9] = ' '
       resp = Server.new(DB_FILE).ingest(j)
@@ -251,8 +251,9 @@ describe Server do
 
     # add "stuff":"things"
     it "handles unexpected fields with an error notice" do
-      a = Nostrb::Source.publish(Test::SIGNED)
+      a = Nostrb::Source.publish(Test::SIGNED).dup
       expect(a[1]).must_be_kind_of Hash
+      a[1] = a[1].dup
       a[1]["stuff"] = "things"
 
       resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
@@ -269,6 +270,8 @@ describe Server do
     it "handles missing fields with an error notice" do
       a = Nostrb::Source.publish(Test::SIGNED)
       expect(a[1]).must_be_kind_of Hash
+      a = a.dup
+      a[1] = a[1].dup
       a[1].delete("tags")
 
       resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
@@ -283,8 +286,9 @@ describe Server do
 
     # cut "id" in half
     it "handles field format errors with an error notice" do
-      a = Nostrb::Source.publish(Test::SIGNED)
+      a = Nostrb::Source.publish(Test::SIGNED).dup
       expect(a[1]).must_be_kind_of Hash
+      a[1] = a[1].dup
       a[1]["id"] = a[1]["id"].slice(0, 32)
 
       resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
@@ -301,6 +305,8 @@ describe Server do
     it "handles invalid signature with OK:false" do
       a = Nostrb::Source.publish(Test::SIGNED)
       expect(a[1]).must_be_kind_of Hash
+      a = a.dup
+      a[1] = a[1].dup
       a[1]["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
 
       resp = Server.new(DB_FILE).ingest(Nostrb.json(a))
@@ -318,9 +324,10 @@ describe Server do
 
     # "id" and "sig" spoofed from another event
     it "handles spoofed id with OK:false" do
-      orig = Source.publish(Test.new_event('orig'))
-      spoof = Source.publish(Test::SIGNED)
+      orig = Source.publish(Test.new_event('orig')).dup
+      spoof = Source.publish(Test::SIGNED).dup
 
+      orig[1] = orig[1].dup
       orig[1]["id"] = spoof[1]["id"]
       orig[1]["sig"] = spoof[1]["sig"]
 
@@ -342,7 +349,8 @@ describe Server do
 
     # random "id"
     it "handles invalid id with OK:false" do
-      a = Source.publish(Test::SIGNED)
+      a = Source.publish(Test::SIGNED).dup
+      a[1] = a[1].dup
       a[1]["id"] = SchnorrSig.bin2hex(Random.bytes(32))
 
       resp = Server.new(DB_FILE).ingest(Nostrb.json(a))

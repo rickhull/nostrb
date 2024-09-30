@@ -14,6 +14,6 @@ module Nostrb
     space_before: '',
   }
 
-  def self.parse(json) = JSON.parse(json, **JSON_OPTIONS)
-  def self.json(object) = JSON.generate(object, **JSON_OPTIONS)
+  def self.parse(json) = JSON.parse(json, **JSON_OPTIONS).freeze
+  def self.json(object) = JSON.generate(object, **JSON_OPTIONS).freeze
 end

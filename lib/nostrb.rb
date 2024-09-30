@@ -12,7 +12,7 @@ module Nostrb
   class FormatError < Error; end
 
   # return 32 bytes binary
-  def self.digest(str) = Digest::SHA256.digest(str)
+  def self.digest(str) = Digest::SHA256.digest(str).freeze
 
   def self.check!(val, cls)
     val.is_a?(cls) ? val : raise(TypeError, "#{cls} expected: #{val.inspect}")
@@ -43,7 +43,7 @@ module Nostrb
     end
     raise(SizeError, str.length) if !length.nil? and str.length != length
     raise(SizeError, str.length) if !max.nil? and str.length > max
-    str
+    str.freeze
   end
 
   def self.bin!(str, length: nil, max: nil)
