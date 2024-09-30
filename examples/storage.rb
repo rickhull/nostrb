@@ -2,7 +2,7 @@ require 'nostrb/sequel'
 
 filename = 'testing.db'
 
-sql = Nostrb::SQLite::Setup.new(filename, set_pragmas: true)
+sql = Nostrb::SQLite::Setup.new(filename)
 seq = Nostrb::Sequel::Setup.new(filename)
 
 sql.setup

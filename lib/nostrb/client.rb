@@ -104,5 +104,6 @@ if __FILE__ == $0
   c.subscribe(f) { |e| pubkeys.add e.fetch('pubkey') }
   p pubkeys.to_a
 
+  puts "close:"
   c.close
 end
