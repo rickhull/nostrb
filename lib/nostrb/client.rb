@@ -126,9 +126,6 @@ if __FILE__ == $0
   f.since = Nostrb::Filter.ago(years: 1)
 
   puts "filter: #{f}"
-  events = c.subscribe(f) { |e|
-    pubkeys.add e.fetch 'pubkey'
-  }
-
-  p pubkeys
+  c.subscribe(f) { |e| pubkeys.add e.fetch('pubkey') }
+  p pubkeys.to_a
 end
