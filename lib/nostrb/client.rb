@@ -26,7 +26,7 @@ module Nostrb
           conn.flush
           resp = conn.read
           conn.shutdown
-          Nostrb.parse(resp.buffer).freeze
+          Nostrb.parse(resp.buffer)
         end
       end
     end
