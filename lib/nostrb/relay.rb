@@ -14,7 +14,7 @@ require 'set' # jruby wants this
 # for replaceable events with same timestamp, lowest id wins
 
 module Nostrb
-  class Server
+  class Relay
     def self.event(sid, event) = ["EVENT", Nostrb.sid!(sid), event.to_h]
     def self.ok(eid, msg = "", ok: true)
       ["OK", Nostrb.id!(eid), !!ok, ok ? Nostrb.txt!(msg) : Nostrb.help!(msg)]
@@ -58,10 +58,10 @@ module Nostrb
         when 'CLOSE'
           [handle_close(Nostrb.sid!(a[1]))]
         else
-          [Server.notice("unexpected: #{a[0].inspect}")]
+          [Relay.notice("unexpected: #{a[0].inspect}")]
         end
       rescue StandardError => e
-        [Server.error(e)]
+        [Relay.error(e)]
       end
     end
 
@@ -70,7 +70,7 @@ module Nostrb
       begin
         hsh = SignedEvent.validate!(hsh)
       rescue Nostrb::Error, KeyError, RuntimeError => e
-        return Server.error(e)
+        return Relay.error(e)
       end
 
       eid = hsh.fetch('id')
@@ -94,11 +94,11 @@ module Nostrb
           raise(SignedEvent::Error, "kind: #{hsh['kind']}")
         end
 
-        Server.ok(eid)
+        Relay.ok(eid)
       rescue SignedEvent::Error => e
-        Server.ok(eid, Server.message(e), ok: false)
+        Relay.ok(eid, Relay.message(e), ok: false)
       rescue Nostrb::Error, KeyError, RuntimeError => e
-        Server.error(e)
+        Relay.error(e)
       end
     end
 
@@ -124,19 +124,19 @@ module Nostrb
 
       filters.each { |f|
         @reader.process_events(f).each { |h|
-          responses << Server.event(sid, h) if f.match? h
+          responses << Relay.event(sid, h) if f.match? h
         }
         @reader.process_r_events(f).each { |h|
-          responses << Server.event(sid, h) if f.match? h
+          responses << Relay.event(sid, h) if f.match? h
         }
       }
       responses = responses.to_a
-      responses << Server.eose(sid)
+      responses << Relay.eose(sid)
     end
 
     # single response
     def handle_close(sid)
-      Server.closed(sid, "reason: CLOSE requested")
+      Relay.closed(sid, "reason: CLOSE requested")
     end
   end
 end

@@ -35,7 +35,7 @@ context = {}
 homer, marge = context['homer'], context['marge']
 bart, lisa, maggie = context['bart'], context['lisa'], context['maggie']
 
-relay = Server.new(storage: STORAGE)
+relay = Relay.new(storage: STORAGE)
 
 puts "Bart uploads his profile"
 hsh = {

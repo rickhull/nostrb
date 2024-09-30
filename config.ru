@@ -3,7 +3,7 @@
 require 'async/websocket/adapters/rack'
 require 'nostrb/relay'
 
-relay = Nostrb::Server.new
+relay = Nostrb::Relay.new
 Adapter = Async::WebSocket::Adapters::Rack
 
 app = lambda do |env|
