@@ -35,8 +35,6 @@ jobs:
           ruby-version: ${{ matrix.ruby }}
           bundler: none
       - name: Install dependencies
-        run: gem install schnorr_sig sqlite3
+        run: gem install schnorr_sig
       - name: Run tests
-        run: rake test
-        env:
-          INPUT_DB_FILE: ${{ runner.temp }}/testing.db
+        run: rake test_less

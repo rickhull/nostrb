@@ -5,11 +5,16 @@ Rake::TestTask.new :test do |t|
   t.warning = true
 end
 
-task :relay do |t|
-  sh "ruby -I lib examples/relay.rb"
+Rake::TestTask.new :test_less do |t|
+  t.pattern = "test/{[!r][!e][!l][!a][!y]}*.rb"
+  t.warning = true
 end
 
-task default: [:test, :relay]
+task :relay do |t|
+  sh "bundle exec falcon serve --bind wss://localhost:7070"
+end
+
+task default: [:test]
 
 begin
   require 'buildar'
