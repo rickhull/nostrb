@@ -4,7 +4,7 @@ require 'nostrb/sqlite'
 module Nostrb
   module Sequel
     class Storage < SQLite::Storage
-      FILENAME = 'sequel.db'
+      FILENAME = 'sequel.tmp.db'
       TABLES = [:events, :tags, :r_events, :r_tags]
 
       def self.schema_line(col, cfg)

@@ -112,7 +112,7 @@ module Nostrb
       MB = KB * 1024
       GB = MB * 1024
 
-      FILENAME = 'tmp.db'
+      FILENAME = 'sqlite.tmp.db'
       CONFIG = {
         default_transaction_mode: :immediate,
       }
