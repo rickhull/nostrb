@@ -1,5 +1,3 @@
-require 'set'
-
 require 'async'
 require 'async/http/endpoint'
 require 'async/websocket/client'
@@ -8,13 +6,6 @@ require 'nostrb/source'
 
 module Nostrb
   class Client
-    def self.get(conn, msg)
-      conn.write(Nostrb.json(msg))
-      conn.flush
-      resp = conn.read
-      conn.shutdown
-    end
-
     attr_reader :url, :endpoint, :sid
 
     def initialize(relay_url, sid: nil)
@@ -27,29 +18,27 @@ module Nostrb
       warn msg
     end
 
-    def publish(signed_event)
-      resp = nil
+    # open, send req, get response, return response
+    def single(req)
       Sync do
         Async::WebSocket::Client.connect(@endpoint) do |conn|
-          Nostrb::Client.get(conn, Nostrb::Source.publish(signed_event))
+          conn.write(Nostrb.json(req))
+          conn.flush
+          resp = conn.read
+          conn.shutdown
+          Nostrb.parse(resp.buffer)
         end
       end
-      if resp
-        ary = Nostrb.parse(resp.buffer)
-        # 0: OK
-        # 1: event id
-        # 2: true or false
-        # 3: message, typically for OK:false
-        case ary[0]
-        when 'OK'
-          log "id mismatch: #{ary[1]}" unless ary[1] == signed_event.id
-          log ary[3] unless ary[2]
-          ary[2] # true / false
-        when 'NOTICE'
-          log ary[1] # error
-        else
-          raise('unexpected')
-        end
+    end
+
+    def publish(signed_event)
+      case single(Nostrb::Source.publish(signed_event))
+      in ['OK', String => event_id, ok, String => msg]
+        log "id mismatch: #{event_id}" unless event_id == signed_event.id
+        log msg unless ok
+        ok
+      in ['NOTICE', String => msg]
+        log msg
       end
     end
 
@@ -60,14 +49,13 @@ module Nostrb
           conn.flush
           eose = false
           while !eose and resp = conn.read
-            ary = Nostrb.parse(resp.buffer)
-            case ary[0]
-            when 'EVENT'
-              yield ary[2]
-            when 'EOSE'
+            case Nostrb.parse(resp.buffer)
+            in ['EVENT', String => sid, Hash => event]
+              log "sid mismatch: #{sid}" unless sid == @sid
+              yield event
+            in ['EOSE', String => sid]
+              log "sid mismatch: #{sid}" unless sid == @sid
               eose = true
-            else
-              raise('unexpected')
             end
           end
           conn.shutdown
@@ -76,29 +64,17 @@ module Nostrb
     end
 
     def close
-      resp = nil
-      Sync do
-        Async::WebSocket::Client.connect(@endpoint) do |conn|
-          Nostrb::Client.get(conn, Nostrb::Source.close(@sid))
-        end
-      end
-      if resp
-        ary = Nostrb.parse(resp.buffer)
-        case ary[0]
-        when 'CLOSED'
-          if !ary[1].empty?
-            log ary[1]
-          end
-          true
-        else
-          raise('unexpected')
-        end
+      case single(Nostrb::Source.close(@sid))
+      in ['CLOSED', String => sid, String => msg]
+        log msg unless msg.empty?
+        true
       end
     end
   end
 end
 
 if __FILE__ == $0
+  require 'set'
   c = Nostrb::Client.new('wss://localhost:7070')
   sk, pk = SchnorrSig.keypair
   src = Nostrb::Source.new(pk)
