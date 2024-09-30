@@ -66,6 +66,7 @@ module Nostrb
     def close
       case single(Nostrb::Source.close(@sid))
       in ['CLOSED', String => sid, String => msg]
+        log "sid mismatch: #{sid}" unless sid == @sid
         log msg unless msg.empty?
         true
       end
@@ -102,4 +103,6 @@ if __FILE__ == $0
   puts "filter: #{f}"
   c.subscribe(f) { |e| pubkeys.add e.fetch('pubkey') }
   p pubkeys.to_a
+
+  c.close
 end
