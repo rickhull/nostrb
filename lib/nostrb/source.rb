@@ -63,6 +63,11 @@ module Nostrb
     #   Event
     #     content: {"name":<username>,"about":<string>,"picture":<url>}
     #     kind: 0, user metadata
+    #     optional content fields:
+    #       display_name: <string>
+    #       website: <url>
+    #       banner: <url, picture>
+    #       bot: <boolean>
     def user_metadata(name:, about:, picture:, **kwargs)
       full = kwargs.merge(name: Nostrb.txt!(name),
                           about: Nostrb.txt!(about),
@@ -90,6 +95,24 @@ module Nostrb
       list
     end
     alias_method :follows, :follow_list
+
+    def relay_list(url_hsh)
+      list = event('', 10002)
+      url_hsh.each { |url, rw_flag|
+        case rw_flag
+        when nil, :read_write
+          # read/write
+          list.add_tag('r', url)
+        when :read
+          list.add_tag('r', url, 'read')
+        when :write
+          list.add_tag('r', url, 'write')
+        else
+          raise('unexpected')
+        end
+      }
+      list
+    end
 
     #           NIP-09
     # Input
