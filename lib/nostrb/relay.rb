@@ -73,7 +73,7 @@ module Nostrb
         return Relay.error(e)
       end
 
-      eid = hsh.fetch('id')
+      eid = hsh['id']
 
       begin
         hsh = SignedEvent.verify(hsh)
@@ -88,7 +88,6 @@ module Nostrb
           # ephemeral, don't store
         when 30_000..30_999
           # parameterized replaceable, store latest (pubkey, kind, dtag)
-          # TODO: implement dtag stuff
           @writer.add_r_event(hsh)
         else
           raise(SignedEvent::Error, "kind: #{hsh['kind']}")
