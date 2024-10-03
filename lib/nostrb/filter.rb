@@ -1,3 +1,5 @@
+require 'set'
+
 module Nostrb
   module Seconds
     def milliseconds(i) = i / 1000r
@@ -61,14 +63,18 @@ module Nostrb
 
     attr_reader :ids, :authors, :kinds, :tags, :limit
 
-    def initialize
-      @ids = []
-      @authors = []
-      @kinds = []
+    # e.g. Filter.new(kind: 0, limit: 10).since(days: 1)
+    def initialize(id: nil, author: nil, kind: nil, limit: nil)
+      @ids = Set.new
+      @ids.add id unless id.nil?
+      @authors = Set.new
+      @authors.add author unless author.nil?
+      @kinds = Set.new
+      @kinds.add kind unless kind.nil?
       @tags = {}
-      @since = nil
+      @since = Filter.ago(days: 1)
       @until = nil
-      @limit = nil
+      @limit = limit
     end
 
     def to_s
@@ -76,15 +82,15 @@ module Nostrb
     end
 
     def add_ids(*event_ids)
-      @ids += event_ids.each { |id| Nostrb.id!(id) }
+      @ids.merge event_ids.each { |id| Nostrb.id!(id) }
     end
 
     def add_authors(*pubkeys)
-      @authors += pubkeys.each { |pubkey| Nostrb.pubkey!(pubkey) }
+      @authors.merge pubkeys.each { |pubkey| Nostrb.pubkey!(pubkey) }
     end
 
     def add_kinds(*kinds)
-      @kinds += kinds.each { |k| Nostrb.kind!(k) }
+      @kinds.merge kinds.each { |k| Nostrb.kind!(k) }
     end
 
     def add_tag(letter, list)
@@ -92,12 +98,22 @@ module Nostrb
         Nostrb.ary!(list, max: 99).each { |s| Nostrb.txt!(s) }
     end
 
-    def since(hsh = nil) = hsh.nil? ? @since : (@since = Filter.ago(hsh))
+    def since(hsh = nil)
+      return @since if hsh.nil?
+      @since = Filter.ago(hsh)
+      self
+    end
+
     def since=(int)
       @since = int.nil? ? nil : Nostrb.int!(int)
     end
 
-    def until(hsh = nil) = hsh.nil? ? @until : (@until = Filter.ago(hsh))
+    def until(hsh = nil)
+      return @until if hsh.nil?
+      @until = Filter.ago(hsh)
+      self
+    end
+
     def until=(int)
       @until = int.nil? ? nil : Nostrb.int!(int)
     end
@@ -133,9 +149,9 @@ module Nostrb
 
     def to_h
       h = Hash.new
-      h["ids"] = @ids if !@ids.empty?
-      h["authors"] = @authors if !@authors.empty?
-      h["kinds"] = @kinds if !@kinds.empty?
+      h["ids"] = @ids.to_a if !@ids.empty?
+      h["authors"] = @authors.to_a if !@authors.empty?
+      h["kinds"] = @kinds.to_a if !@kinds.empty?
       @tags.each { |letter, ary|
         h['#' + letter.to_s] = ary if !ary.empty?
       }
