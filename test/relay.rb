@@ -307,7 +307,7 @@ describe Relay do
       expect(a[1]).must_be_kind_of Hash
       a = a.dup
       a[1] = a[1].dup
-      a[1]["sig"] = SchnorrSig.bin2hex(Random.bytes(64))
+      a[1]["sig"] = Nostrb.random_hex(64)
 
       resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(resp).must_be_kind_of Array
@@ -351,7 +351,7 @@ describe Relay do
     it "handles invalid id with OK:false" do
       a = Source.publish(Test::SIGNED).dup
       a[1] = a[1].dup
-      a[1]["id"] = SchnorrSig.bin2hex(Random.bytes(32))
+      a[1]["id"] = Nostrb.random_hex(32)
 
       resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(resp).must_be_kind_of Array

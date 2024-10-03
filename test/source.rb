@@ -41,9 +41,9 @@ describe Source do
 
     it "creates follow_list events" do
       pubkey_hsh = {
-        SchnorrSig.bin2hex(Random.bytes(32)) => ['foo', 'bar'],
-        SchnorrSig.bin2hex(Random.bytes(32)) => ['baz', 'quux'],
-        SchnorrSig.bin2hex(Random.bytes(32)) => ['asdf', '123'],
+        Nostrb.random_hex(32) => { relay: 'foo', petname: 'bar' },
+        Nostrb.random_hex(32) => { relay: 'baz', petname: 'quux' },
+        Nostrb.random_hex(32) => { relay: 'asdf', petname: '123' },
       }
       s = Source.new(Test::PK)
       e = s.follow_list(pubkey_hsh)
@@ -56,7 +56,7 @@ describe Source do
     end
 
     it "creates deletion_request events" do
-      fake_ids = Array.new(3) { SchnorrSig.bin2hex Random.bytes(32) }
+      fake_ids = Array.new(3) { Nostrb.random_hex(32) }
 
       s = Source.new(Test::PK)
       e = s.deletion_request('testing deletes', *fake_ids)
@@ -67,15 +67,17 @@ describe Source do
 end
 
 describe Filter do
-  it "starts empty" do
+  it "starts with a _since_ value" do
     f = Filter.new
     expect(f).must_be_kind_of Filter
-    expect(f.to_h).must_be_empty
+    expect(f.to_h).wont_be_empty
+    expect(f.since).wont_be_nil
+    expect(f.since).must_be_kind_of Integer
   end
 
   it "validates added ids" do
     f = Filter.new
-    ids = Array.new(3) { SchnorrSig.bin2hex(Random.bytes(32)) }
+    ids = Array.new(3) { Nostrb.random_hex(32) }
     f.add_ids(*ids)
     expect(f.to_h).wont_be_empty
     expect(f.to_h["ids"]).wont_be_empty
@@ -84,7 +86,7 @@ describe Filter do
 
   it "validates added tags" do
     f = Filter.new
-    ids = Array.new(3) { SchnorrSig.bin2hex(Random.bytes(32)) }
+    ids = Array.new(3) { Nostrb.random_hex(32) }
     f.add_tag('e', ids)
     hsh = f.to_h
     expect(hsh).wont_be_empty
@@ -119,7 +121,7 @@ describe "stuff" do
 
   it "creates REQ messages to subscribe to events using filters" do
     f = Filter.new
-    pubkey = SchnorrSig.bin2hex Random.bytes(32)
+    pubkey = Nostrb.random_hex(32)
     sid = Source.random_sid
     f.add_authors(pubkey)
     a = Source.subscribe(sid, f)
