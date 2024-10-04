@@ -220,72 +220,22 @@ module Nostrb
     end
 
     class Setup < Storage
-      def setup
-        drop_tables
-        create_tables
-        create_indices
-        report
+      def read_sql(filename)
+        File.read(File.join(__dir__, '..', '..', 'sql', filename)).freeze
       end
 
       def drop_tables
-        %w[events tags r_events r_tags].each { |tbl|
-          @db.execute "DROP TABLE IF EXISTS #{tbl}"
-        }
+        @db.execute_batch read_sql('drop_tables.sql')
       end
 
       def create_tables
-        @db.execute <<SQL
-CREATE TABLE events (content    TEXT NOT NULL,
-                     kind       INT NOT NULL,
-                     tags       TEXT NOT NULL,
-                     pubkey     TEXT NOT NULL,
-                     created_at INT NOT NULL,
-                     id         TEXT PRIMARY KEY NOT NULL,
-                     sig        TEXT NOT NULL) STRICT
-SQL
-
-        @db.execute <<SQL
-CREATE TABLE tags (event_id    TEXT NOT NULL REFERENCES events (id)
-                               ON DELETE CASCADE ON UPDATE CASCADE,
-                   created_at  INT NOT NULL,
-                   tag         TEXT NOT NULL,
-                   value       TEXT NOT NULL,
-                   json        TEXT NOT NULL) STRICT
-SQL
-
-        @db.execute <<SQL
-CREATE TABLE r_events (content    TEXT NOT NULL,
-                       kind       INT NOT NULL,
-                       tags       TEXT NOT NULL,
-                       d_tag      TEXT DEFAULT NULL,
-                       pubkey     TEXT NOT NULL,
-                       created_at INT NOT NULL,
-                       id         TEXT PRIMARY KEY NOT NULL,
-                       sig        TEXT NOT NULL) STRICT
-SQL
-
-        @db.execute <<SQL
-CREATE TABLE r_tags (r_event_id TEXT NOT NULL REFERENCES r_events (id)
-                                ON DELETE CASCADE ON UPDATE CASCADE,
-                     created_at INT NOT NULL,
-                     tag        TEXT NOT NULL,
-                     value      TEXT NOT NULL,
-                     json       TEXT NOT NULL) STRICT
-SQL
+        @db.execute_batch read_sql('create_tables.sql')
       end
 
-      def create_indices
-        @db.execute "CREATE INDEX idx_events_created_at
-                               ON events (created_at)"
-        @db.execute "CREATE INDEX idx_tags_created_at
-                               ON tags (created_at)"
-        @db.execute "CREATE INDEX idx_r_events_created_at
-                               ON r_events (created_at)"
-        @db.execute "CREATE INDEX idx_r_tags_created_at
-                               ON r_tags (created_at)"
-
-        @db.execute "CREATE UNIQUE INDEX unq_r_events_kind_pubkey_d_tag
-                                      ON r_events (kind, pubkey, d_tag)"
+      def setup
+        drop_tables
+        create_tables
+        report
       end
     end
 
