@@ -78,6 +78,16 @@ module Nostrb
     SchnorrSig.bin2hex(SchnorrSig.random_bytes(bytes)).freeze
   end
 
+  TIME_STRF = '%H:%M:%S.%L'.freeze
+
+  def self.timestamp
+    Time.now.strftime(TIME_STRF)
+  end
+
+  def self.stamp msg
+    format("[%s] %s", timestamp(), msg)
+  end
+
   # optional dependencies
   module Optional
     GEMS = %w[rbsecp256k1 oj sqlite3 sequel]
