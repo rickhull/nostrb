@@ -75,7 +75,7 @@ module Nostrb
   # this will use SecureRandom unless ENV['NO_SECURERANDOM']
   def self.random_hex(bytes = 32, chars: nil)
     bytes = (chars * 0.5).ceil unless chars.nil?
-    SchnorrSig.bin2hex SchnorrSig.random_bytes(bytes)
+    SchnorrSig.bin2hex(SchnorrSig.random_bytes(bytes)).freeze
   end
 
   # optional dependencies
