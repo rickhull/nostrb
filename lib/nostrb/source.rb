@@ -25,7 +25,7 @@ module Nostrb
     # Utils / Init
 
     def self.random_sid
-      SchnorrSig.bin2hex(Random.bytes(32)).freeze
+      Nostrb.random_hex(32)
     end
 
     attr_reader :pk
@@ -78,8 +78,11 @@ module Nostrb
 
     #           NIP-02
     # Input
-    #   pubkey_hsh: a ruby hash of the form: pubkey => [relay_url, petname]
-    #     "deadbeef1234abcdef" => ["wss://alicerelay.com/", "alice"]
+    #   pubkey_hsh: a ruby hash of the form:
+    #     "deadbeef1234abcdef" => {
+    #        relay: "wss://alicerelay.com/",
+    #        petname: "alice",
+    #     }
     # Output
     #   Event
     #     content: ""
@@ -87,28 +90,38 @@ module Nostrb
     #     tags: [['p', pubkey, relay_url, petname]]
     def follow_list(pubkey_hsh)
       list = event('', 3)
-      pubkey_hsh.each { |pubkey, (url, name)|
-        list.ref_pubkey(Nostrb.pubkey!(pubkey),
-                        Nostrb.txt!(url),
-                        Nostrb.txt!(name))
+      pubkey_hsh.each { |pubkey, hsh|
+        case hsh
+        in relay: String => url, petname: String => name
+          list.ref_pubkey(pubkey, url, name)
+        end
       }
       list
     end
     alias_method :follows, :follow_list
 
+    #           NIP-65
+    # Input
+    #   pubkey_hsh: a ruby hash of the form:
+    #     "deadbeef1234abcdef" => {
+    #        relay: "wss://alicerelay.com/",
+    #        petname: "alice",
+    #     }
+    # Output
+    #   Event
+    #     content: ""
+    #     kind: 10002, relay list
+    #     tags: [['r', url, rw_flag]]
     def relay_list(url_hsh)
       list = event('', 10002)
       url_hsh.each { |url, rw_flag|
         case rw_flag
-        when nil, :read_write
-          # read/write
+        when nil, :read_write    # RW
           list.add_tag('r', url)
-        when :read
-          list.add_tag('r', url, 'read')
-        when :write
-          list.add_tag('r', url, 'write')
+        when :read, :write       # RO / WO
+          list.add_tag('r', url, rw_flag.to_s)
         else
-          raise('unexpected')
+          raise("unexpected: #{rw_flag.inspect}")
         end
       }
       list
@@ -123,12 +136,16 @@ module Nostrb
     #     content: explanation
     #     kind: 5, deletion request
     #     tags: [['e', event_id]]
-    # TODO: support deletion of replaceable events ('a' tags)
     def deletion_request(explanation, *event_ids)
       e = event(explanation, 5)
       event_ids.each { |eid| e.ref_event(eid) }
       e
     end
     alias_method :delete, :deletion_request
+
+    # TODO: support deletion of replaceable events ('a' tags)
+    def delete_replaceable(explanation, *event_ids)
+      delete_request(explanation, *event_ids)
+    end
   end
 end
