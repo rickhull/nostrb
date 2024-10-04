@@ -265,7 +265,12 @@ module Nostrb
         if filter.until
           clauses << format("created_at <= %i", filter.until)
         end
-        clauses.join(' AND ')
+        clauses = clauses.join(' AND ')
+        if filter.limit
+          clauses = format("%s ORDER BY created_at LIMIT %i",
+                           clauses, filter.limit)
+        end
+        clauses
       end
 
       # filter_tags: { 'a' => [String] }
