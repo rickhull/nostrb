@@ -19,7 +19,7 @@ app = lambda do |env|
         conn.write Nostrb.json(resp)
       }
     end
-    puts format("[%s] Closed %s after %.1f ms; %i req %i resp",
+    puts format("[%s] Closed %s after %.2f ms; %i req %i resp",
                 Nostrb.timestamp, cnx_id, (Time.now - t) * 1000, reqs, resps)
   end
 end
