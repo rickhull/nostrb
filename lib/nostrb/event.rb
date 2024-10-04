@@ -94,6 +94,19 @@ module Nostrb
       add_tag('p', Nostrb.pubkey!(pubkey), *rest)
     end
 
+    # add a (relay) url
+    def ref_url(url, flag = nil, *rest)
+      case flag
+      when nil, :read_write, 'read_write'
+        # ok, RW is default
+      when :read, :write, 'read', 'write'
+        rest.shift(flag.to_s) # add the flag
+      else
+        raise("unexpected: #{flag.inspect}")
+      end
+      add_tag('r', url, *rest)
+    end
+
     # kind: and pubkey: required
     def ref_replace(*rest, kind:, pubkey:, d_tag: '')
       val = [Nostrb.kind!(kind), Nostrb.pubkey!(pubkey), d_tag].join(':')

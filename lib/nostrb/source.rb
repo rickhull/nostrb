@@ -114,16 +114,7 @@ module Nostrb
     #     tags: [['r', url, rw_flag]]
     def relay_list(url_hsh)
       list = event('', 10002)
-      url_hsh.each { |url, rw_flag|
-        case rw_flag
-        when nil, :read_write    # RW
-          list.add_tag('r', url)
-        when :read, :write       # RO / WO
-          list.add_tag('r', url, rw_flag.to_s)
-        else
-          raise("unexpected: #{rw_flag.inspect}")
-        end
-      }
+      url_hsh.each { |url, rw_flag| list.ref_url(url, rw_flag) }
       list
     end
 
