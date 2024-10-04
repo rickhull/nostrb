@@ -14,5 +14,5 @@ Gem::Specification.new do |s|
   s.files += Dir['lib/**/*.rb']
   s.files += Dir['test/**/*.rb']
 
-  s.add_dependency "schnorr_sig", "~> 1.0"
+  s.add_dependency "schnorr_sig", "~> 1.2"
 end
