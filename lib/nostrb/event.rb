@@ -9,6 +9,28 @@ module Nostrb
     #   tags: Array[Array[string]]
     #   pubkey: 64 hex chars (32B binary)
 
+    # Kind
+    #   1, 4..44, 1000..9999: regular -- relay stores all
+    #   0, 3: replaceable -- relay stores only the last message from pubkey
+    #   2: deprecated
+    #   10_000..19_999: replaceable -- relay stores latest(pubkey, kind)
+    #   20_000..29_999: ephemeral -- relay doesn't store
+    #   30_000..39_999: parameterized replaceable -- latest(pubkey, kind, dtag)
+
+    # Tag
+    #   Array[String]: [tag, value, *rest] - tag is typically a single letter
+    # Well Known Tags
+    #   a: addressable or replaceable (NIP-01)
+    #   d: user_defined_value? addressable? paremeterized replaceable?
+    #   e: event_id (NIP-01)
+    #   i: external id (NIP-73)
+    #   p: public_key (NIP-01)
+    #   r: relay_url, or any url
+    #   t: hashtag
+    #   title: set name (NIP-51) or cal event (NIP-52) or
+    #          live event (NIP-53) or listing (NIP-99)
+
+    # SHA256(JSON(Array))
     def self.digest(ary) = Nostrb.digest(Nostrb.json(Nostrb.ary!(ary)))
 
     def self.tag_values(tag, tags)
