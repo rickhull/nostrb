@@ -1,6 +1,8 @@
 require 'nostrb/client'
 require 'set'
 
+include Nostrb
+
 # Bart uploads his profile; pubkey now discoverable
 # Marge requests recent profiles; discovers Bart's pubkey
 # Marge follows Bart
@@ -45,7 +47,7 @@ def timestamp msg
 end
 
 relay_url ='wss://localhost:7070'
-c = Nostrb::Client.new(relay_url)
+c = Client.new(relay_url)
 
 reg = {}
 %w[homer marge bart lisa maggie].each { |name|
@@ -53,7 +55,7 @@ reg = {}
   reg[name] = {
     sk: sk,
     pk: pk,
-    src: Nostrb::Source.new(pk)
+    src: Source.new(pk)
   }
 }
 timestamp "Built Registry"
@@ -78,7 +80,7 @@ puts
 marge = reg['marge'][:src]
 sk = reg['marge'][:sk]
 pubkeys = {}
-f = Nostrb::Filter.new(kind: 0).since(seconds: 5)
+f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Marge's filter: #{f}"
 c.subscribe(f) { |e|
   puts "Event: #{e}"
@@ -88,7 +90,7 @@ timestamp "Pubkeys: #{pubkeys}"
 puts
 
 # Marge reqests preferred relay(s)
-f = Nostrb::Filter.new(kind: 10002).since(seconds: 5)
+f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors *pubkeys.keys
 timestamp "Marge's filter: #{f}"
 c.subscribe(f) { |e|
@@ -126,7 +128,7 @@ homer = reg['homer'][:src]
 sk = reg['homer'][:sk]
 
 pubkeys = {}
-f = Nostrb::Filter.new(kind: 0).since(seconds: 5)
+f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Homer's filter: #{f}"
 c.subscribe(f) { |e|
   puts "Event: #{e}"
@@ -136,7 +138,7 @@ timestamp "Pubkeys: #{pubkeys}"
 puts
 
 # Homer reqests preferred relay(s)
-f = Nostrb::Filter.new(kind: 10002).since(seconds: 5)
+f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors(*pubkeys.keys)
 timestamp "Homer's filter: #{f}"
 c.subscribe(f) { |e|
@@ -191,7 +193,7 @@ puts
 # Marge requests recent profiles; discovers Lisa, Maggie
 sk = reg['marge'][:sk]
 pubkeys = {}
-f = Nostrb::Filter.new(kind: 0).since(seconds: 5)
+f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Marge's filter: #{f}"
 c.subscribe(f) { |e|
   puts "Event: #{e}"
@@ -201,7 +203,7 @@ timestamp "Pubkeys: #{pubkeys}"
 puts
 
 # Marge reqests preferred relay(s)
-f = Nostrb::Filter.new(kind: 10002).since(seconds: 5)
+f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors *pubkeys.keys
 timestamp "Marge's filter: #{f}"
 c.subscribe(f) { |e|
@@ -221,11 +223,25 @@ timestamp c.publish(f)
 puts
 
 # Homer requests Marge's recent follows; discovers Lisa and Maggie
+homer = reg['homer'][:src]
+sk = reg['homer'][:sk]
 marge_pk = pubkeys.select { |pk, hsh| hsh[:petname] == 'marge' }.keys.first
 raise(pubkeys.inspect) if marge_pk.nil?
-f = Nostrb::Filter.new(kind: 3, author: marge_pk).since(seconds: 5)
+f = Filter.new(kind: 3, author: marge_pk).since(seconds: 5)
+
 timestamp "Homer's filter: #{f}"
+pkh = {}
 c.subscribe(f) { |e|
-  puts "Event: #{e}"
+  e['tags'].each { |(tag, pubkey, relay, petname)|
+    next unless tag == 'p' and %w[maggie lisa].include? petname
+    pkh[pubkey] = {
+      petname: petname,
+      relay: relay,
+    }
+  }
 }
+
+f = homer.follow_list(pkh).sign(sk)
+timestamp "Homer follows: #{f.tags}"
+timestamp c.publish(f)
 puts
