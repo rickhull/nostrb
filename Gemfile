@@ -13,7 +13,6 @@ group :network do
 end
 
 group :performance do
-  gem 'rbsecp256k1'
   gem 'oj'
 end
 
