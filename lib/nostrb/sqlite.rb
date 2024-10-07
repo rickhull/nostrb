@@ -382,7 +382,7 @@ module Nostrb
                                               :tag, :value, :json)")
         tags = valid['tags']
         record = Writer.serialize_tags(valid)
-        record['d_tag'] = Event.d_tag(tags)
+        record['d_tag'] = Event.d_tag(tags) || ''
         @add_r_event.execute(record) # upsert event
         tags.each { |a|              # insert tags
           @add_rtag.execute(r_event_id: valid['id'],

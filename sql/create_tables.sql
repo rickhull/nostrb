@@ -23,7 +23,7 @@ CREATE INDEX idx_tags_created_at ON tags (created_at);
 CREATE TABLE r_events (content    TEXT NOT NULL,
                        kind       INT NOT NULL,
                        tags       TEXT NOT NULL,
-                       d_tag      TEXT DEFAULT NULL,
+                       d_tag      TEXT NOT NULL,
                        pubkey     TEXT NOT NULL,
                        created_at INT NOT NULL,
                        id         TEXT PRIMARY KEY NOT NULL,
