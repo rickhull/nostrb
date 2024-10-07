@@ -1,4 +1,7 @@
 { pkgs ? import <nixpkgs> {} }:
-  pkgs.mkShell {
-    nativeBuildInputs = with pkgs.buildPackages; [ ruby_3_3 ];
+pkgs.mkShell {
+  nativeBuildInputs = with pkgs.buildPackages; [
+    ruby_3_3
+    sqlite
+  ];
 }
