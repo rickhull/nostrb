@@ -36,6 +36,7 @@ module Nostrb
     ary
   end
 
+  # NOTICE: this will freeze every incoming string
   def self.str!(str, binary: nil, length: nil, max: nil)
     check!(str, String)
     if !binary.nil? and !binary == (str.encoding == Encoding::BINARY)
