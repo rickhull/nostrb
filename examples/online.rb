@@ -191,12 +191,19 @@ f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Marge's filter: #{f}"
 c.subscribe(f) { |edata|
   puts "Event: #{edata.to_h}"
-  pubkeys[edata.pubkey] = {
-    relay: nil,
-    petname: Nostrb.parse(edata.content).fetch('name'),
+  pubkeys[edata.pubkey] ||= {
+    petname: Nostrb.parse(edata.content).fetch('name')
   }
 }
 timestamp "Pubkeys: #{pubkeys}"
+puts
+
+puts
+puts
+puts
+puts "################################"
+puts
+puts
 puts
 
 # Marge reqests preferred relay(s)
@@ -212,7 +219,19 @@ timestamp "Pubkeys: #{pubkeys}"
 puts
 
 # Marge follows Maggie, Lisa, Bart
-babies = %w[maggie lisa bart].freeze
+baby_names = %w[maggie lisa bart]
+babies = pubkeys.select { | pk, hsh|
+  baby_names.include? hsh.fetch(:petname)
+}.to_h
+
+puts "Babies: #{babies.inspect}"
+
+f = marge.follow_list(babies)
+timestamp "Marge follows: #{f.tags}"
+
+
+
+
 f = marge.follow_list(pubkeys.select { |pk, hsh|
                         babies.include? hsh[:petname]
                       }.to_h).sign(sk)
