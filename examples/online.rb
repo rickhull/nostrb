@@ -144,7 +144,6 @@ c.subscribe(f) { |edata|
 timestamp "Pubkeys: #{pubkeys}"
 puts
 
-
 # Homer follows Marge
 f = homer.follow_list(pubkeys.select { |pk, hsh|
                         hsh[:petname] == 'marge'
@@ -179,13 +178,11 @@ timestamp "Maggie's profile: #{p}"
 timestamp c.publish(p)
 puts
 
-
 # Maggie uploads her preferred relays
 r = maggie.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Maggie's relay list: #{r.tags}"
 timestamp c.publish(r)
 puts
-
 
 # Marge requests recent profiles; discovers Lisa, Maggie
 sk = reg['marge'][:sk]
@@ -201,7 +198,6 @@ c.subscribe(f) { |edata|
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
-
 
 # Marge reqests preferred relay(s)
 f = Filter.new(kind: 10002).since(seconds: 5)
@@ -223,7 +219,6 @@ f = marge.follow_list(pubkeys.select { |pk, hsh|
 timestamp "Marge follows: #{f.tags}"
 timestamp c.publish(f)
 puts
-
 
 # Homer requests Marge's recent follows; discovers Lisa and Maggie
 homer = reg['homer'][:src]
