@@ -124,7 +124,7 @@ module Nostrb
     end
 
     # Input
-    #   SignedEvent::Data
+    #   SignedEvent
     def match?(edata)
       return false if !@ids.empty?     and !@ids.include?(edata.id)
       return false if !@authors.empty? and !@authors.include?(edata.pubkey)

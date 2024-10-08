@@ -242,22 +242,16 @@ module Nostrb
     class Reader < Storage
       PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
 
-      # parse the JSON tags into a Ruby array
-      # return SignedEvent::Data
-      def self.xhydrate(hash)
-        hash["tags"] = Nostrb.parse(hash.fetch("tags"))
-        SignedEvent::Data.ingest(hash)
-      end
-
       # SELECT content, kind, tags, pubkey, created_at, id, sig
+      # tags get parsed to JSON
       def self.hydrate(row)
-        SignedEvent::Data.new(content: row[0],
-                              kind: row[1],
-                              tags: Nostrb.parse(row[2]),
-                              pubkey: row[3],
-                              created_at: row[4],
-                              id: row[5],
-                              sig: row[6])
+        SignedEvent.new(content:    row[0],
+                        kind:       row[1],
+                        tags:       Nostrb.parse(row[2]),
+                        pubkey:     row[3],
+                        created_at: row[4],
+                        id:         row[5],
+                        sig:        row[6])
       end
 
       def self.event_clauses(filter)
@@ -338,7 +332,7 @@ module Nostrb
         edata.to_h.merge(tags: Nostrb.json(edata.tags))
       end
 
-      # SignedEvent::Data
+      # SignedEvent
       def add_event(edata)
         @add_event ||= @db.prepare("INSERT INTO events
                                        VALUES (:content, :kind, :tags, :pubkey,

@@ -42,7 +42,7 @@ module Nostrb
       end
     end
 
-    # yields SignedEvent::Data
+    # yields SignedEvent
     def subscribe(*filters, &blk)
       Sync do
         Async::WebSocket::Client.connect(@endpoint) do |conn|
@@ -53,7 +53,7 @@ module Nostrb
             case Nostrb.parse(resp.buffer)
             in ['EVENT', String => sid, Hash => hsh]
               log "sid mismatch: #{sid}" unless sid == @sid
-              yield SignedEvent::Data.ingest(hsh)
+              yield SignedEvent.ingest(hsh)
             in ['EOSE', String => sid]
               log "sid mismatch: #{sid}" unless sid == @sid
               eose = true

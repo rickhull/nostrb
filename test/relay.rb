@@ -148,63 +148,73 @@ describe Relay do
     expect(event[0]).must_equal 'EVENT'
     expect(event[1]).must_equal pubkey
     expect(event[2]).must_be_kind_of Hash
-    expect(event[2]['id']).must_equal e.id
+    expect(event[2].fetch(:id)).must_equal e.id
     expect(eose[0]).must_equal 'EOSE'
   end
 
   it "has multiple responses to REQ requests" do
     s = Relay.new(DB_FILE)
     e = Test.new_event('first')
-    resp = s.ingest Nostrb.json(Source.publish(e))
+    resps = s.ingest Nostrb.json(Source.publish(e))
+    expect(resps).must_be_kind_of Array
+    expect(resps.length).must_equal 1
+
+    resp = resps.first
     expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_be_kind_of Array
-    expect(resp[0][0]).must_equal "OK"
+    expect(resp[0]).must_equal "OK"
+    expect(resp[2]).must_equal true
 
     e2 = Test.new_event('second')
-    resp = s.ingest Nostrb.json(Source.publish(e2))
+    resps = s.ingest Nostrb.json(Source.publish(e2))
+    expect(resps).must_be_kind_of Array
+    expect(resps.length).must_equal 1
+
+    resp = resps.first
     expect(resp).must_be_kind_of Array
-    expect(resp[0]).must_be_kind_of Array
-    expect(resp[0][0]).must_equal "OK"
+    expect(resp[0]).must_equal "OK"
+    expect(resp[2]).must_equal true
 
     # with no filters, nothing will match
     sid = e.pubkey
-    responses = s.ingest(Nostrb.json(Source.subscribe(sid)))
-    expect(responses).must_be_kind_of Array
-    expect(responses.length).must_equal 1
-    resp = responses[0]
+    resps = s.ingest(Nostrb.json(Source.subscribe(sid)))
+    expect(resp).must_be_kind_of Array
+    expect(resps.length).must_equal 1
+
+    resp = resps.first
     expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "EOSE"
     expect(resp[1]).must_equal sid
+
 
     # now add a filter based on pubkey
     f = Filter.new
     f.add_authors e.pubkey
     f.add_ids e.id, e2.id
 
-    p f.to_h
+    resps = s.ingest Nostrb.json(Source.subscribe(sid, f))
+    expect(resps).must_be_kind_of Array
+    expect(resps.length).wont_equal 1
 
-    resp = s.ingest Nostrb.json(Source.subscribe(sid, f))
-
-    p resp
-
-    expect(resp).must_be_kind_of Array
-    expect(resp.length).must_equal 3
+    # TODO: should it equal 3?
 
     # remove EOSE and validate
-    eose = resp.pop
+    eose = resps.pop
     expect(eose).must_be_kind_of Array
     expect(eose[0]).must_equal "EOSE"
     expect(eose[1]).must_equal sid
 
     # verify the response event ids
-    resp.each { |event|
-      expect(event).must_be_kind_of Array
-      expect(event[0]).must_equal "EVENT"
-      expect(event[1]).must_equal sid
-      hsh = event[2]
+    resps.each { |event_resp|
+      expect(event_resp).must_be_kind_of Array
+      expect(event_resp[0]).must_equal "EVENT"
+      expect(event_resp[1]).must_equal sid
+
+      # here is the event object, parsed from JSON
+      hsh = event_resp[2]
       expect(hsh).must_be_kind_of Hash
-      edata = SignedEvent::Data.ingest(hsh)
-      expect(edata).must_be_kind_of SignedEvent::Data
+
+      edata = SignedEvent.new(**hsh)
+      expect(edata).must_be_kind_of SignedEvent
       expect([e.id, e2.id]).must_include edata.id
     }
   end
@@ -332,7 +342,7 @@ describe Relay do
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty
-      expect(msg).must_match(/SignatureCheck/)
+      expect(msg).must_match(/SigCheck/)
     end
 
     # "id" and "sig" spoofed from another event
@@ -377,6 +387,7 @@ describe Relay do
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty
+      expect(msg).must_match(/IdCheck/)
     end
   end
 end

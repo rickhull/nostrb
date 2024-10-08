@@ -69,13 +69,18 @@ module Nostrb
     # return a single response
     def handle_event(hsh)
       begin
-        edata = SignedEvent::Data.ingest(hsh)
+        edata = SignedEvent.ingest(hsh)
       rescue Nostrb::Error, KeyError, RuntimeError => e
         return Relay.error(e)
       end
 
+      if !edata.valid_id?
+        return Relay.ok(edata.id, "IdCheck: #{edata.id}", ok: false)
+      elsif !edata.valid_sig?
+        return Relay.ok(edata.id, "SigCheck: #{edata.sig}", ok: false)
+      end
+
       begin
-        edata = SignedEvent.verify(edata)
         case edata.kind
         when 1, (4..44), (1000..9999)
           # regular, store all
@@ -89,13 +94,10 @@ module Nostrb
           # parameterized replaceable, store latest (pubkey, kind, dtag)
           @writer.add_r_event(edata)
         else
-          raise(SignedEvent::Error, "kind: #{edata.kind}")
+          return Relay.ok(edata.id, "kind: #{edata.kind}", ok: false)
         end
-
         Relay.ok(edata.id)
-      rescue SignedEvent::Error => e
-        Relay.ok(edata.id, Relay.message(e), ok: false)
-      rescue Nostrb::Error, KeyError, RuntimeError => e
+      rescue RuntimeError => e
         Relay.error(e)
       end
     end

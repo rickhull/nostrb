@@ -11,9 +11,7 @@ describe Event do
 
   describe "class functions" do
     it "computes a 32 byte digest of a JSON serialization" do
-      skip # using Data, not Hash
-      a = SignedEvent.serialize(Test::STATIC_HASH)
-      d = Event.digest(a)
+      d = Event.digest(Test::EVENT.to_a)
       expect(d).must_be_kind_of String
       expect(d.length).must_equal 32
       expect(d.encoding).must_equal Encoding::BINARY
@@ -23,7 +21,9 @@ describe Event do
   describe "initialization" do
     it "wraps a string of content" do
       content = 'hello world'
-      expect(text_note(content).content).must_equal content
+      e = Event.new(content, pk: Test::PK)
+      expect(e).must_be_kind_of Event
+      expect(e.content).must_equal content
     end
 
     it "requires a _kind_ integer, defaulting to 1" do
@@ -122,57 +122,47 @@ describe Event do
 end
 
 describe SignedEvent do
-  def signed_note(content = '')
-    Event.new(content, kind: 1, pk: Test::PK).sign(Test::SK)
-  end
-
   describe "class functions" do
-    it "validates a JSON parsed hash" do
-      skip # using Data, not Hash
-      ed = SignedEvent.validate!(Test::STATIC_HASH)
-      expect(ed).must_be_kind_of SignedEvent::Data
+    it "ingests a JSON parsed hash" do
+      edata = SignedEvent.ingest(Test::STATIC_HASH)
+      expect(edata).must_be_kind_of SignedEvent
       %w[id pubkey kind content tags created_at sig].each { |k|
-        expect(ed.send(k)).wont_be_nil
+        expect(edata.send(k)).wont_be_nil
       }
     end
 
-    it "verifies a JSON parsed hash" do
-      skip # using Data, not Hash
-      h = SignedEvent.verify(Test::STATIC_HASH)
-      expect(h).must_be_kind_of Hash
+    it "verifies the id and sig of a JSON parsed hash" do
+      edata = SignedEvent.ingest(Test::STATIC_HASH)
+      expect(edata.valid_id?).must_equal true
+      expect(edata.valid_sig?).must_equal true
     end
 
     it "serializes a JSON parsed hash" do
-      skip # using Data, not Hash
-      a = SignedEvent.serialize(Test::STATIC_HASH)
+      edata = SignedEvent.ingest(Test::STATIC_HASH)
+      a = edata.serialize
       expect(a).must_be_kind_of Array
       expect(a.length).must_equal 6
     end
 
+    # TODO: reconsider?  this got carried along some refactors
     it "digests a hash JSON parsed hash, which it will serialize" do
-      skip # using Data, not Hash
-      a = SignedEvent.serialize(Test::STATIC_HASH)
+      edata = SignedEvent.ingest(Test::STATIC_HASH)
+      a = edata.serialize
       d = Event.digest(a)
-      d2 = SignedEvent.digest(Test::STATIC_HASH)
-      expect(d2).must_equal d
+
+      expect(d).must_equal SchnorrSig.hex2bin(edata.id)
     end
   end
 
   it "generates a timestamp at creation time" do
-    expect(signed_note().created_at).must_be_kind_of Integer
+    expect(Test.new_event().created_at).must_be_kind_of Integer
   end
 
   it "signs the event, given a private key in binary format" do
-    signed = signed_note()
+    signed = Test.new_event()
     expect(signed).must_be_kind_of SignedEvent
     expect(signed.id).must_be_kind_of String
     expect(signed.created_at).must_be_kind_of Integer
-
-    # check signature
-    signature = signed.signature
-    expect(signature).must_be_kind_of String
-    expect(signature.encoding).must_equal Encoding::BINARY
-    expect(signature.length).must_equal 64
 
     # check sig hex
     sig = signed.sig
@@ -182,8 +172,8 @@ describe SignedEvent do
   end
 
   it "has a formalized Data format" do
-    data = signed_note().data
-    expect(data).must_be_kind_of SignedEvent::Data
+    data = Test.new_event()
+    expect(data).must_be_kind_of SignedEvent
     expect(data.content).must_be_kind_of String
     expect(data.pubkey).must_be_kind_of String
     expect(data.pubkey).wont_be_empty

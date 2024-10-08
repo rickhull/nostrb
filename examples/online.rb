@@ -58,13 +58,13 @@ p = bart.profile(name: 'bart',
                  about: 'bart',
                  picture: 'bart').sign(sk)
 timestamp "Bart's profile: #{p}"
-timestamp c.publish(p.data)
+timestamp c.publish(p)
 puts
 
 # Bart uploads preferred relay(s)
 r = bart.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Bart's relay list: #{r.tags}"
-timestamp c.publish(r.data)
+timestamp c.publish(r)
 puts
 
 # Marge requests profile pubkeys
@@ -99,7 +99,7 @@ f = marge.follow_list(pubkeys.select { |pk, h|
                         h[:petname] == 'bart'
                       }.to_h).sign(sk)
 timestamp "Marge follows: #{f.tags}"
-timestamp c.publish(f.data)
+timestamp c.publish(f)
 puts
 
 # Marge uploads her profile
@@ -107,13 +107,13 @@ p = marge.profile(name: 'marge',
                  about: 'marge',
                  picture: 'marge').sign(sk)
 timestamp "Marge's profile: #{p}"
-timestamp c.publish(p.data)
+timestamp c.publish(p)
 puts
 
 # Marge uploads her preferred relays
 r = marge.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Marge's relay list: #{r.tags}"
-timestamp c.publish(r.data)
+timestamp c.publish(r)
 puts
 
 # Homer requests recent profiles; discovers Marge's and Bart's pubkeys
@@ -150,7 +150,7 @@ f = homer.follow_list(pubkeys.select { |pk, hsh|
                         hsh[:petname] == 'marge'
                       }.to_h).sign(sk)
 timestamp "Homer follows: #{f.tags}"
-timestamp c.publish(f.data)
+timestamp c.publish(f)
 puts
 
 # Lisa uploads her profile
@@ -160,13 +160,13 @@ p = lisa.profile(name: 'lisa',
                  about: 'lisa',
                  picture: 'lisa').sign(sk)
 timestamp "Lisa's profile: #{p}"
-timestamp c.publish(p.data)
+timestamp c.publish(p)
 puts
 
 # Lisa uploads her preferred relays
 r = lisa.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Lisa's relay list: #{r.tags}"
-timestamp c.publish(r.data)
+timestamp c.publish(r)
 puts
 
 # Maggie uploads her profile
@@ -176,14 +176,14 @@ p = maggie.profile(name: 'maggie',
                    about: 'maggie',
                    picture: 'maggie').sign(sk)
 timestamp "Maggie's profile: #{p}"
-timestamp c.publish(p.data)
+timestamp c.publish(p)
 puts
 
 
 # Maggie uploads her preferred relays
 r = maggie.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Maggie's relay list: #{r.tags}"
-timestamp c.publish(r.data)
+timestamp c.publish(r)
 puts
 
 
@@ -235,7 +235,7 @@ f = Filter.new(kind: 3, author: marge_pk).since(seconds: 5)
 timestamp "Homer's filter: #{f}"
 pkh = {}
 c.subscribe(f) { |e|
-  e['tags'].each { |(tag, pubkey, relay, petname)|
+  e.tags.each { |(tag, pubkey, relay, petname)|
     next unless tag == 'p' and %w[maggie lisa].include? petname
     pkh[pubkey] = {
       petname: petname,
