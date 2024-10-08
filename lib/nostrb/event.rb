@@ -2,7 +2,6 @@ require 'nostrb'
 
 module Nostrb
   class Event
-
     # Event
     #   content: any string
     #   kind: 0..65535
@@ -120,32 +119,42 @@ module Nostrb
   # sig: 128 hex chars (64B binary)
 
   class SignedEvent
+    Data = ::Data.define(:content, :kind, :tags, :pubkey,
+                         :created_at, :id, :sig) do
+      def self.ingest(hash)
+        self.new(content: hash.fetch('content'),
+                 kind: hash.fetch('kind'),
+                 tags: hash.fetch('tags'),
+                 pubkey: hash.fetch('pubkey'),
+                 created_at: hash.fetch('created_at'),
+                 id: hash.fetch('id'),
+                 sig: hash.fetch('sig'))
+      end
+
+      def initialize(content:, kind:, tags:, pubkey:, created_at:, id:, sig:)
+        super(content: Nostrb.txt!(content),
+              kind: Nostrb.kind!(kind),
+              tags: Event.freeze_tags(Nostrb.tags!(tags)),
+              pubkey: Nostrb.pubkey!(pubkey),
+              created_at: Nostrb.int!(created_at),
+              id: Nostrb.id!(id),
+              sig: Nostrb.sig!(sig))
+      end
+    end
+
     class Error < RuntimeError; end
     class IdCheck < Error; end
     class SignatureCheck < Error; end
 
-    def self.validate!(parsed)
-      Nostrb.check!(parsed, Hash)
-      Nostrb.txt!(parsed.fetch("content"))
-      Nostrb.pubkey!(parsed.fetch("pubkey"))
-      Nostrb.kind!(parsed.fetch("kind"))
-      Nostrb.tags!(parsed.fetch("tags"))
-      Event.freeze_tags(parsed['tags'])
-      Nostrb.int!(parsed.fetch("created_at"))
-      Nostrb.id!(parsed.fetch("id"))
-      Nostrb.sig!(parsed.fetch("sig"))
-      parsed.freeze
-    end
+    def self.digest(edata) = Nostrb.digest(Nostrb.json(serialize(edata)))
 
-    def self.digest(valid) = Nostrb.digest(Nostrb.json(serialize(valid)))
-
-    def self.serialize(valid)
+    def self.serialize(edata)
       Array[ 0,
-             valid["pubkey"],
-             valid["created_at"],
-             valid["kind"],
-             valid["tags"],
-             valid["content"], ].freeze
+             edata.pubkey,
+             edata.created_at,
+             edata.kind,
+             edata.tags,
+             edata.content, ].freeze
     end
 
     # Validate the id (optional) and signature
@@ -153,31 +162,37 @@ module Nostrb
     # May raise implicitly: Nostrb::SizeError, EncodingError, TypeError,
     #                       SchnorrSig::Error
     # Return a _completely validated_ hash
-    def self.verify(valid, check_id: true)
-      id, pubkey, sig = valid["id"], valid["pubkey"], valid["sig"]
-
-      # extract binary values for signature verification
-      digest = SchnorrSig.hex2bin id
-      pk = SchnorrSig.hex2bin pubkey
-      signature = SchnorrSig.hex2bin sig
-
-      # verify the signature
-      unless SchnorrSig.verify?(pk, digest, signature)
-        raise(SignatureCheck, sig)
+    def self.verify(edata, check_id: true)
+      Nostrb.check!(edata, SignedEvent::Data)
+      digest = SchnorrSig.hex2bin edata.id
+      unless SchnorrSig.verify?(SchnorrSig.hex2bin(edata.pubkey),
+                                digest,
+                                SchnorrSig.hex2bin(edata.sig))
+        raise(SignatureCheck, edata.sig)
       end
       # (optional) verify the id / digest
-      raise(IdCheck, id) if check_id and digest != SignedEvent.digest(valid)
-      valid
+      if check_id and digest != SignedEvent.digest(edata)
+        raise(IdCheck, edata.id)
+      end
+      edata
     end
 
-    attr_reader :event, :created_at, :digest, :signature
+    attr_reader :event, :created_at, :digest, :signature, :data
 
     # sk is used to generate @signature and then discarded
+    # TODO: get rid of @event, just use @data
     def initialize(event, sk)
       @event = Nostrb.check!(event, Event)
       @created_at = Time.now.to_i
       @digest = @event.digest(@created_at).freeze
       @signature = SchnorrSig.sign(Nostrb.key!(sk), @digest).freeze
+      @data = SignedEvent::Data.new(content: @event.content,
+                                    kind: @event.kind,
+                                    tags: @event.tags,
+                                    pubkey: @event.pubkey,
+                                    created_at: @created_at,
+                                    id: SchnorrSig.bin2hex(@digest),
+                                    sig: SchnorrSig.bin2hex(@signature))
     end
 
     def content = @event.content
@@ -186,18 +201,8 @@ module Nostrb
     def pubkey = @event.pubkey
     def to_s = @event.to_s
     def serialize = @event.serialize(@created_at)
-
-    def id = SchnorrSig.bin2hex(@digest).freeze
-    def sig = SchnorrSig.bin2hex(@signature).freeze
-
-    def to_h
-      Hash[ "content" => @event.content,
-            "kind" => @event.kind,
-            "tags" => @event.tags,
-            "pubkey" => @event.pubkey,
-            "created_at" => @created_at,
-            "id" => self.id,
-            "sig" => self.sig ].freeze
-    end
+    def id = @data.id
+    def sig = @data.sig
+    def to_h = @data.to_h.freeze # deprecated
   end
 end

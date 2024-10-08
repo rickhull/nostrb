@@ -33,15 +33,6 @@ def best_relay(tags)
   rw or wo or ro or ''
 end
 
-def pubkey_petname(profile)
-  raise("wrong event kind") unless profile['kind'] == 0
-  { profile['pubkey'] => {
-      relay: nil,
-      petname: Nostrb.parse(profile['content']).fetch('name'),
-    }
-  }
-end
-
 def timestamp msg
   puts Nostrb.stamp(msg)
 end
@@ -67,13 +58,13 @@ p = bart.profile(name: 'bart',
                  about: 'bart',
                  picture: 'bart').sign(sk)
 timestamp "Bart's profile: #{p}"
-timestamp c.publish(p)
+timestamp c.publish(p.data)
 puts
 
 # Bart uploads preferred relay(s)
 r = bart.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Bart's relay list: #{r.tags}"
-timestamp c.publish(r)
+timestamp c.publish(r.data)
 puts
 
 # Marge requests profile pubkeys
@@ -82,9 +73,12 @@ sk = reg['marge'][:sk]
 pubkeys = {}
 f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Marge's filter: #{f}"
-c.subscribe(f) { |e|
-  puts "Event: #{e}"
-  pubkeys.update(pubkey_petname(e))
+c.subscribe(f) { |edata|
+  puts "Event: #{edata.to_h}"
+  pubkeys[edata.pubkey] = {
+    relay: nil,
+    petname: Nostrb.parse(edata.content).fetch('name'),
+  }
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
@@ -93,9 +87,9 @@ puts
 f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors *pubkeys.keys
 timestamp "Marge's filter: #{f}"
-c.subscribe(f) { |e|
-  puts "Event: #{e}"
-  pubkeys[e['pubkey']][:relay] = best_relay(e['tags'])
+c.subscribe(f) { |edata|
+  puts "Event: #{edata.to_h}"
+  pubkeys[edata.pubkey][:relay] = best_relay(edata.tags)
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
@@ -105,22 +99,21 @@ f = marge.follow_list(pubkeys.select { |pk, h|
                         h[:petname] == 'bart'
                       }.to_h).sign(sk)
 timestamp "Marge follows: #{f.tags}"
-timestamp c.publish(f)
+timestamp c.publish(f.data)
 puts
-
 
 # Marge uploads her profile
 p = marge.profile(name: 'marge',
                  about: 'marge',
                  picture: 'marge').sign(sk)
 timestamp "Marge's profile: #{p}"
-timestamp c.publish(p)
+timestamp c.publish(p.data)
 puts
 
 # Marge uploads her preferred relays
 r = marge.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Marge's relay list: #{r.tags}"
-timestamp c.publish(r)
+timestamp c.publish(r.data)
 puts
 
 # Homer requests recent profiles; discovers Marge's and Bart's pubkeys
@@ -130,9 +123,12 @@ sk = reg['homer'][:sk]
 pubkeys = {}
 f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Homer's filter: #{f}"
-c.subscribe(f) { |e|
-  puts "Event: #{e}"
-  pubkeys.update(pubkey_petname(e))
+c.subscribe(f) { |edata|
+  puts "Event: #{edata.to_h}"
+  pubkeys[edata.pubkey] = {
+    relay: nil,
+    petname: Nostrb.parse(edata.content).fetch('name'),
+  }
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
@@ -141,9 +137,9 @@ puts
 f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors(*pubkeys.keys)
 timestamp "Homer's filter: #{f}"
-c.subscribe(f) { |e|
-  puts "Event: #{e}"
-  pubkeys[e['pubkey']][:relay] = best_relay(e['tags'])
+c.subscribe(f) { |edata|
+  puts "Event: #{edata.to_h}"
+  pubkeys[edata.pubkey][:relay] = best_relay(edata.tags)
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
@@ -154,7 +150,7 @@ f = homer.follow_list(pubkeys.select { |pk, hsh|
                         hsh[:petname] == 'marge'
                       }.to_h).sign(sk)
 timestamp "Homer follows: #{f.tags}"
-timestamp c.publish(f)
+timestamp c.publish(f.data)
 puts
 
 # Lisa uploads her profile
@@ -164,13 +160,13 @@ p = lisa.profile(name: 'lisa',
                  about: 'lisa',
                  picture: 'lisa').sign(sk)
 timestamp "Lisa's profile: #{p}"
-timestamp c.publish(p)
+timestamp c.publish(p.data)
 puts
 
 # Lisa uploads her preferred relays
 r = lisa.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Lisa's relay list: #{r.tags}"
-timestamp c.publish(r)
+timestamp c.publish(r.data)
 puts
 
 # Maggie uploads her profile
@@ -180,35 +176,41 @@ p = maggie.profile(name: 'maggie',
                    about: 'maggie',
                    picture: 'maggie').sign(sk)
 timestamp "Maggie's profile: #{p}"
-timestamp c.publish(p)
+timestamp c.publish(p.data)
 puts
 
 
 # Maggie uploads her preferred relays
 r = maggie.relay_list({ relay_url => :read_write }).sign(sk)
 timestamp "Maggie's relay list: #{r.tags}"
-timestamp c.publish(r)
+timestamp c.publish(r.data)
 puts
+
 
 # Marge requests recent profiles; discovers Lisa, Maggie
 sk = reg['marge'][:sk]
 pubkeys = {}
 f = Filter.new(kind: 0).since(seconds: 5)
 timestamp "Marge's filter: #{f}"
-c.subscribe(f) { |e|
-  puts "Event: #{e}"
-  pubkeys.update(pubkey_petname(e))
+c.subscribe(f) { |edata|
+  puts "Event: #{edata.to_h}"
+  pubkeys[edata.pubkey] = {
+    relay: nil,
+    petname: Nostrb.parse(edata.content).fetch('name'),
+  }
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
+
 
 # Marge reqests preferred relay(s)
 f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors *pubkeys.keys
 timestamp "Marge's filter: #{f}"
-c.subscribe(f) { |e|
-  puts "Event: #{e}"
-  pubkeys[e['pubkey']][:relay] = best_relay(e['tags'])
+c.subscribe(f) { |edata|
+  puts "Event: #{edata.to_h}"
+  puts "Tags: #{edata.tags}"
+  pubkeys[edata.pubkey][:relay] = best_relay(edata.tags)
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
@@ -221,6 +223,7 @@ f = marge.follow_list(pubkeys.select { |pk, hsh|
 timestamp "Marge follows: #{f.tags}"
 timestamp c.publish(f)
 puts
+
 
 # Homer requests Marge's recent follows; discovers Lisa and Maggie
 homer = reg['homer'][:src]

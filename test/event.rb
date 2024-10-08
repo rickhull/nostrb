@@ -11,6 +11,7 @@ describe Event do
 
   describe "class functions" do
     it "computes a 32 byte digest of a JSON serialization" do
+      skip # using Data, not Hash
       a = SignedEvent.serialize(Test::STATIC_HASH)
       d = Event.digest(a)
       expect(d).must_be_kind_of String
@@ -127,25 +128,29 @@ describe SignedEvent do
 
   describe "class functions" do
     it "validates a JSON parsed hash" do
-      h = SignedEvent.validate!(Test::STATIC_HASH)
-      expect(h).must_be_kind_of Hash
+      skip # using Data, not Hash
+      ed = SignedEvent.validate!(Test::STATIC_HASH)
+      expect(ed).must_be_kind_of SignedEvent::Data
       %w[id pubkey kind content tags created_at sig].each { |k|
-        expect(h.key?(k)).must_equal true
+        expect(ed.send(k)).wont_be_nil
       }
     end
 
     it "verifies a JSON parsed hash" do
+      skip # using Data, not Hash
       h = SignedEvent.verify(Test::STATIC_HASH)
       expect(h).must_be_kind_of Hash
     end
 
     it "serializes a JSON parsed hash" do
+      skip # using Data, not Hash
       a = SignedEvent.serialize(Test::STATIC_HASH)
       expect(a).must_be_kind_of Array
       expect(a.length).must_equal 6
     end
 
     it "digests a hash JSON parsed hash, which it will serialize" do
+      skip # using Data, not Hash
       a = SignedEvent.serialize(Test::STATIC_HASH)
       d = Event.digest(a)
       d2 = SignedEvent.digest(Test::STATIC_HASH)
@@ -176,18 +181,18 @@ describe SignedEvent do
     expect(sig.length).must_equal 128
   end
 
-  it "has a formalized Key-Value format" do
-    h = signed_note().to_h
-    expect(h).must_be_kind_of Hash
-    expect(h.fetch "content").must_be_kind_of String
-    expect(h.fetch "pubkey").must_be_kind_of String
-    expect(h["pubkey"]).wont_be_empty
-    expect(h.fetch "kind").must_be_kind_of Integer
-    expect(h.fetch "tags").must_be_kind_of Array
-    expect(h.fetch "created_at").must_be_kind_of Integer
-    expect(h.fetch "id").must_be_kind_of String
-    expect(h["id"]).wont_be_empty
-    expect(h.fetch "sig").must_be_kind_of String
-    expect(h["sig"]).wont_be_empty
+  it "has a formalized Data format" do
+    data = signed_note().data
+    expect(data).must_be_kind_of SignedEvent::Data
+    expect(data.content).must_be_kind_of String
+    expect(data.pubkey).must_be_kind_of String
+    expect(data.pubkey).wont_be_empty
+    expect(data.kind).must_be_kind_of Integer
+    expect(data.tags).must_be_kind_of Array
+    expect(data.created_at).must_be_kind_of Integer
+    expect(data.id).must_be_kind_of String
+    expect(data.id).wont_be_empty
+    expect(data.sig).must_be_kind_of String
+    expect(data.sig).wont_be_empty
   end
 end

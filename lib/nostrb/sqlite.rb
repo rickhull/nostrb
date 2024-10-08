@@ -243,12 +243,25 @@ module Nostrb
       PRAGMAS = Storage::PRAGMAS.merge(query_only: true)
 
       # parse the JSON tags into a Ruby array
-      def self.hydrate(hash)
+      # return SignedEvent::Data
+      def self.xhydrate(hash)
         hash["tags"] = Nostrb.parse(hash.fetch("tags"))
-        hash
+        SignedEvent::Data.ingest(hash)
+      end
+
+      # SELECT content, kind, tags, pubkey, created_at, id, sig
+      def self.hydrate(row)
+        SignedEvent::Data.new(content: row[0],
+                              kind: row[1],
+                              tags: Nostrb.parse(row[2]),
+                              pubkey: row[3],
+                              created_at: row[4],
+                              id: row[5],
+                              sig: row[6])
       end
 
       def self.event_clauses(filter)
+        return 'true' if filter.nil?
         clauses = []
         if !filter.ids.empty?
           clauses << format("id IN ('%s')", filter.ids.join("','"))
@@ -291,31 +304,11 @@ module Nostrb
       # Regular Events
       #
 
-      def select_events_table(table = 'events', filter = nil)
-        sql = format("SELECT content, kind, tags, pubkey, created_at, id, sig
-                      FROM %s", table)
-        if !filter.nil?
-          sql += format(" WHERE %s", Reader.event_clauses(filter))
-        end
-        @db.query sql
-      end
-
-      def process_events_table(table = 'events', filter = nil)
-        a = []
-        select_events_table(table, filter).each_hash { |h|
-          a << Reader.hydrate(h)
-        }
-        a
-      end
-
-      # these are presumably filtered so cannot be prepared
-      # use Database#query to get a ResultSet
-      def select_events(filter = nil)
-        select_events_table('events', filter)
-      end
-
-      def process_events(filter = nil)
-        process_events_table('events', filter)
+      # this query depends on a filter so cannot be efficiently prepared
+      def select_events(filter = nil, table: 'events')
+        @db.query format("SELECT content, kind, tags, pubkey, " +
+                         "created_at, id, sig FROM %s WHERE %s",
+                         table, Reader.event_clauses(filter))
       end
 
       # use a prepared statement to get a ResultSet
@@ -331,14 +324,6 @@ module Nostrb
       # Replaceable Events
       #
 
-      def select_r_events(filter = nil)
-        select_events_table('r_events', filter)
-      end
-
-      def process_r_events(filter = nil)
-        process_events_table('r_events', filter)
-      end
-
       def select_r_tags(event_id:, created_at:)
         @select_r_tags ||= @db.prepare("SELECT tag, value, json
                                         FROM r_tags
@@ -349,22 +334,22 @@ module Nostrb
     end
 
     class Writer < Storage
-      def self.serialize_tags(valid)
-        valid.merge("tags" => Nostrb.json(valid["tags"]))
+      def self.hash(edata)
+        edata.to_h.merge(tags: Nostrb.json(edata.tags))
       end
 
-      # a valid hash, as returned from SignedEvent.validate!
-      def add_event(valid)
+      # SignedEvent::Data
+      def add_event(edata)
         @add_event ||= @db.prepare("INSERT INTO events
                                        VALUES (:content, :kind, :tags, :pubkey,
                                                :created_at, :id, :sig)")
         @add_tag ||= @db.prepare("INSERT INTO tags
                                      VALUES (:event_id, :created_at,
                                              :tag, :value, :json)")
-        @add_event.execute(Writer.serialize_tags(valid)) # insert event
-        valid["tags"].each { |a|                         # insert tags
-          @add_tag.execute(event_id: valid['id'],
-                           created_at: valid['created_at'],
+        @add_event.execute(Writer.hash(edata)) # insert event
+        edata.tags.each { |a|                  # insert tags
+          @add_tag.execute(event_id: edata.id,
+                           created_at: edata.created_at,
                            tag: a[0],
                            value: a[1],
                            json: Nostrb.json(a))
@@ -372,7 +357,7 @@ module Nostrb
       end
 
       # add replaceable event
-      def add_r_event(valid)
+      def add_r_event(edata)
         @add_r_event ||=
           @db.prepare("INSERT OR REPLACE INTO r_events
                                   VALUES (:content, :kind, :tags, :d_tag,
@@ -380,13 +365,12 @@ module Nostrb
         @add_rtag ||= @db.prepare("INSERT INTO r_tags
                                       VALUES (:r_event_id, :created_at,
                                               :tag, :value, :json)")
-        tags = valid['tags']
-        record = Writer.serialize_tags(valid)
-        record['d_tag'] = Event.d_tag(tags) || ''
+        record = Writer.hash(edata)
+        record[:d_tag] = Event.d_tag(edata.tags) || ''
         @add_r_event.execute(record) # upsert event
-        tags.each { |a|              # insert tags
-          @add_rtag.execute(r_event_id: valid['id'],
-                            created_at: valid['created_at'],
+        edata.tags.each { |a|        # insert tags
+          @add_rtag.execute(r_event_id: edata.id,
+                            created_at: edata.created_at,
                             tag: a[0],
                             value: a[1],
                             json: Nostrb.json(a))

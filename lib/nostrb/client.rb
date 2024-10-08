@@ -18,7 +18,7 @@ module Nostrb
       warn msg
     end
 
-    # open, send req, get response, return response
+    # open, send req, get response, close, return response
     def single(req)
       Sync do
         Async::WebSocket::Client.connect(@endpoint) do |conn|
@@ -31,10 +31,10 @@ module Nostrb
       end
     end
 
-    def publish(signed_event)
-      case single(Nostrb::Source.publish(signed_event))
+    def publish(edata)
+      case single(Nostrb::Source.publish(edata))
       in ['OK', String => event_id, ok, String => msg]
-        log "id mismatch: #{event_id}" unless event_id == signed_event.id
+        log "id mismatch: #{event_id}" unless event_id == edata.id
         log msg unless ok
         ok
       in ['NOTICE', String => msg]
@@ -42,6 +42,7 @@ module Nostrb
       end
     end
 
+    # yields SignedEvent::Data
     def subscribe(*filters, &blk)
       Sync do
         Async::WebSocket::Client.connect(@endpoint) do |conn|
@@ -50,9 +51,9 @@ module Nostrb
           eose = false
           while !eose and resp = conn.read
             case Nostrb.parse(resp.buffer)
-            in ['EVENT', String => sid, Hash => event]
+            in ['EVENT', String => sid, Hash => hsh]
               log "sid mismatch: #{sid}" unless sid == @sid
-              yield event
+              yield SignedEvent::Data.ingest(hsh)
             in ['EOSE', String => sid]
               log "sid mismatch: #{sid}" unless sid == @sid
               eose = true

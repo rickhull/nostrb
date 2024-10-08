@@ -61,6 +61,7 @@ module Nostrb
           [Relay.notice("unexpected: #{a[0].inspect}")]
         end
       rescue StandardError => e
+        # raise e
         [Relay.error(e)]
       end
     end
@@ -68,34 +69,32 @@ module Nostrb
     # return a single response
     def handle_event(hsh)
       begin
-        hsh = SignedEvent.validate!(hsh)
+        edata = SignedEvent::Data.ingest(hsh)
       rescue Nostrb::Error, KeyError, RuntimeError => e
         return Relay.error(e)
       end
 
-      eid = hsh['id']
-
       begin
-        hsh = SignedEvent.verify(hsh)
-        case hsh['kind']
+        edata = SignedEvent.verify(edata)
+        case edata.kind
         when 1, (4..44), (1000..9999)
           # regular, store all
-          @writer.add_event(hsh)
+          @writer.add_event(edata)
         when 0, 3, (10_000..19_999)
           # replaceable, store latest (pubkey, kind)
-          @writer.add_r_event(hsh)
+          @writer.add_r_event(edata)
         when 20_000..29_999
           # ephemeral, don't store
         when 30_000..30_999
           # parameterized replaceable, store latest (pubkey, kind, dtag)
-          @writer.add_r_event(hsh)
+          @writer.add_r_event(edata)
         else
-          raise(SignedEvent::Error, "kind: #{hsh['kind']}")
+          raise(SignedEvent::Error, "kind: #{edata.kind}")
         end
 
-        Relay.ok(eid)
+        Relay.ok(edata.id)
       rescue SignedEvent::Error => e
-        Relay.ok(eid, Relay.message(e), ok: false)
+        Relay.ok(edata.id, Relay.message(e), ok: false)
       rescue Nostrb::Error, KeyError, RuntimeError => e
         Relay.error(e)
       end
@@ -118,16 +117,25 @@ module Nostrb
     # run filter2 just like filter1
     # the result set is the union of filter1 and filter2
 
+    # TODO: parallel processing across events/r_events and filters?
+    #       long subscription polling?
     def handle_req(sid, *filters)
       responses = Set.new
 
       filters.each { |f|
-        @reader.process_events(f).each { |h|
-          responses << Relay.event(sid, h) if f.match? h
-        }
-        @reader.process_r_events(f).each { |h|
-          responses << Relay.event(sid, h) if f.match? h
-        }
+        events = @reader.select_events(f, table: 'events')
+        while (next_event = events.next)
+          edata = SQLite::Reader.hydrate(next_event)
+          responses << Relay.event(sid, edata) if f.match? edata
+          next_event = events.next
+        end
+
+        r_events = @reader.select_events(f, table: 'r_events')
+        while (next_r_event = r_events.next)
+          redata = SQLite::Reader.hydrate(next_r_event)
+          responses << Relay.event(sid, redata) if f.match? redata
+          next_r_event = r_events.next
+        end
       }
       responses = responses.to_a
       responses << Relay.eose(sid)
@@ -135,6 +143,7 @@ module Nostrb
 
     # single response
     def handle_close(sid)
+      # TODO: stuff here with long subs
       Relay.closed(sid, "reason: CLOSE requested")
     end
   end

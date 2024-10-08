@@ -9,7 +9,7 @@ include Nostrb
 # this can be set by GitHubActions
 DB_FILE = ENV['INPUT_DB_FILE'] || 'testing.db'
 
-# use SQLite backing
+# set up a new SQLite database
 SQLite::Setup.new(DB_FILE).setup
 
 describe Relay do
@@ -112,7 +112,8 @@ describe Relay do
 
   # respond OK: true
   it "has a single response to EVENT requests" do
-    json = Nostrb.json(Source.publish(Test::SIGNED))
+    e = Test.new_event
+    json = Nostrb.json(Source.publish(e))
     responses = Relay.new(DB_FILE).ingest(json)
     expect(responses).must_be_kind_of Array
     expect(responses.length).must_equal 1
@@ -120,7 +121,7 @@ describe Relay do
     resp = responses[0]
     expect(resp).must_be_kind_of Array
     expect(resp[0]).must_equal "OK"
-    expect(resp[1]).must_equal Test::SIGNED.id
+    expect(resp[1]).must_equal e.id
     expect(resp[2]).must_equal true
   end
 
@@ -151,16 +152,15 @@ describe Relay do
     expect(eose[0]).must_equal 'EOSE'
   end
 
-  it "has multiple responses to REQ requets" do
+  it "has multiple responses to REQ requests" do
     s = Relay.new(DB_FILE)
-    sk, pk = SchnorrSig.keypair
-    e = Event.new('first', pk: pk).sign(sk)
+    e = Test.new_event('first')
     resp = s.ingest Nostrb.json(Source.publish(e))
     expect(resp).must_be_kind_of Array
     expect(resp[0]).must_be_kind_of Array
     expect(resp[0][0]).must_equal "OK"
 
-    e2 = Event.new('second', pk: pk).sign(sk)
+    e2 = Test.new_event('second')
     resp = s.ingest Nostrb.json(Source.publish(e2))
     expect(resp).must_be_kind_of Array
     expect(resp[0]).must_be_kind_of Array
@@ -181,7 +181,12 @@ describe Relay do
     f.add_authors e.pubkey
     f.add_ids e.id, e2.id
 
+    p f.to_h
+
     resp = s.ingest Nostrb.json(Source.subscribe(sid, f))
+
+    p resp
+
     expect(resp).must_be_kind_of Array
     expect(resp.length).must_equal 3
 
@@ -198,8 +203,9 @@ describe Relay do
       expect(event[1]).must_equal sid
       hsh = event[2]
       expect(hsh).must_be_kind_of Hash
-      expect(SignedEvent.validate!(hsh)).must_equal hsh
-      expect([e.id, e2.id]).must_include hsh["id"]
+      edata = SignedEvent::Data.ingest(hsh)
+      expect(edata).must_be_kind_of SignedEvent::Data
+      expect([e.id, e2.id]).must_include edata.id
     }
   end
 
@@ -221,7 +227,8 @@ describe Relay do
   describe "error handling" do
     # invalid request type
     it "handles unknown unknown request types with an error notice" do
-      a = Source.publish(Test::SIGNED).dup
+      e = Test.new_event
+      a = Source.publish(e).dup
       a[0] = 'NONSENSE'
       responses = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(responses).must_be_kind_of Array
@@ -236,7 +243,8 @@ describe Relay do
 
     # replace leading open brace with space
     it "handles JSON parse errors with an error notice" do
-      j = Nostrb.json(Nostrb::Source.publish(Test::SIGNED)).dup
+      e = Test.new_event
+      j = Nostrb.json(Nostrb::Source.publish(e)).dup
       expect(j[9]).must_equal '{'
       j[9] = ' '
       resp = Relay.new(DB_FILE).ingest(j)
@@ -250,29 +258,32 @@ describe Relay do
     end
 
     # add "stuff":"things"
-    it "handles unexpected fields with an error notice" do
-      a = Nostrb::Source.publish(Test::SIGNED).dup
+    it "ignores unexpected fields with OK:true" do
+      e = Test.new_event
+      a = Nostrb::Source.publish(e).dup
       expect(a[1]).must_be_kind_of Hash
       a[1] = a[1].dup
-      a[1]["stuff"] = "things"
+      a[1][:stuff] = "things"
+      j = Nostrb.json(a)
 
-      resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
+      resp = Relay.new(DB_FILE).ingest(j)
       expect(resp).must_be_kind_of Array
       expect(resp.length).must_equal 1
 
-      type, msg = *resp.first
-      expect(type).must_equal "NOTICE"
-      expect(msg).must_be_kind_of String
-      expect(msg).wont_be_empty
+      type, id, val = *resp.first
+      expect(type).must_equal "OK"
+      expect(id).must_equal e.id
+      expect(val).must_equal true
     end
 
     # remove "tags"
     it "handles missing fields with an error notice" do
-      a = Nostrb::Source.publish(Test::SIGNED)
+      e = Test.new_event
+      a = Nostrb::Source.publish(e)
       expect(a[1]).must_be_kind_of Hash
       a = a.dup
       a[1] = a[1].dup
-      a[1].delete("tags")
+      a[1].delete(:tags)
 
       resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(resp).must_be_kind_of Array
@@ -286,10 +297,11 @@ describe Relay do
 
     # cut "id" in half
     it "handles field format errors with an error notice" do
-      a = Nostrb::Source.publish(Test::SIGNED).dup
+      e = Test.new_event
+      a = Nostrb::Source.publish(e).dup
       expect(a[1]).must_be_kind_of Hash
       a[1] = a[1].dup
-      a[1]["id"] = a[1]["id"].slice(0, 32)
+      a[1][:id] = a[1].fetch(:id).slice(0, 32)
 
       resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(resp).must_be_kind_of Array
@@ -303,11 +315,12 @@ describe Relay do
 
     # random "sig"
     it "handles invalid signature with OK:false" do
-      a = Nostrb::Source.publish(Test::SIGNED)
+      e = Test.new_event
+      a = Nostrb::Source.publish(e)
       expect(a[1]).must_be_kind_of Hash
       a = a.dup
       a[1] = a[1].dup
-      a[1]["sig"] = Nostrb.random_hex(64)
+      a[1][:sig] = Nostrb.random_hex(64)
 
       resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(resp).must_be_kind_of Array
@@ -315,7 +328,7 @@ describe Relay do
 
       type, id, value, msg = *resp.first
       expect(type).must_equal "OK"
-      expect(id).must_equal a[1]["id"]
+      expect(id).must_equal a[1].fetch(:id)
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty
@@ -325,11 +338,11 @@ describe Relay do
     # "id" and "sig" spoofed from another event
     it "handles spoofed id with OK:false" do
       orig = Source.publish(Test.new_event('orig')).dup
-      spoof = Source.publish(Test::SIGNED).dup
+      spoof = Source.publish(Test.new_event('spoof'))
 
       orig[1] = orig[1].dup
-      orig[1]["id"] = spoof[1]["id"]
-      orig[1]["sig"] = spoof[1]["sig"]
+      orig[1][:id] = spoof[1].fetch(:id)
+      orig[1][:sig] = spoof[1].fetch(:sig)
 
       # now sig and id agree with each other, but not orig's content/metadata
       # the signature should verify, but the id should not
@@ -340,7 +353,7 @@ describe Relay do
 
       type, id, value, msg = *resp.first
       expect(type).must_equal "OK"
-      expect(id).must_equal orig[1]["id"]
+      expect(id).must_equal orig[1].fetch(:id)
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty
@@ -349,9 +362,10 @@ describe Relay do
 
     # random "id"
     it "handles invalid id with OK:false" do
-      a = Source.publish(Test::SIGNED).dup
+      e = Test.new_event
+      a = Source.publish(e).dup
       a[1] = a[1].dup
-      a[1]["id"] = Nostrb.random_hex(32)
+      a[1][:id] = Nostrb.random_hex(32)
 
       resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
       expect(resp).must_be_kind_of Array
@@ -359,7 +373,7 @@ describe Relay do
 
       type, id, value, msg = *resp.first
       expect(type).must_equal "OK"
-      expect(id).must_equal a[1]["id"]
+      expect(id).must_equal a[1].fetch(:id)
       expect(value).must_equal false
       expect(msg).must_be_kind_of String
       expect(msg).wont_be_empty

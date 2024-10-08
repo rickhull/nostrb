@@ -1,4 +1,5 @@
 require 'set'
+require 'nostrb/event'
 
 module Nostrb
   module Seconds
@@ -123,15 +124,15 @@ module Nostrb
     end
 
     # Input
-    #   Ruby hash as returned from SignedEvent.validate!
-    def match?(valid)
-      return false if !@ids.empty?     and !@ids.include?(valid["id"])
-      return false if !@authors.empty? and !@authors.include?(valid["pubkey"])
-      return false if !@kinds.empty?   and !@kinds.include?(valid["kind"])
-      return false if !@since.nil?     and @since > valid["created_at"]
-      return false if !@until.nil?     and @until < valid["created_at"]
+    #   SignedEvent::Data
+    def match?(edata)
+      return false if !@ids.empty?     and !@ids.include?(edata.id)
+      return false if !@authors.empty? and !@authors.include?(edata.pubkey)
+      return false if !@kinds.empty?   and !@kinds.include?(edata.kind)
+      return false if !@since.nil?     and @since > edata.created_at
+      return false if !@until.nil?     and @until < edata.created_at
       if !@tags.empty?
-        tags = valid["tags"]
+        tags = edata.tags
         @tags.each { |letter, ary|
           tag_match = false
           tags.each { |(tag, val)|

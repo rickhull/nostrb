@@ -11,7 +11,7 @@ module Nostrb
     #######################
     # Client Requests
 
-    def self.publish(signed) = ["EVENT", signed.to_h].freeze
+    def self.publish(edata) = ["EVENT", edata.to_h].freeze
 
     def self.subscribe(sid, *filters)
       ["REQ", Nostrb.sid!(sid), *filters.map { |f|
