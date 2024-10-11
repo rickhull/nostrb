@@ -28,51 +28,33 @@ module Nostrb
       format("%s: %s", excp.class.name.split('::').last, excp.message)
     end
 
-    def initialize(db_filename = nil, storage: :sqlite)
-      case storage
-      when :sqlite
-        mod = Nostrb::SQLite
-      when :sequel
-        require 'nostrb/sequel'
-        mod = Nostrb::Sequel
-      else
-        raise "unexpected: #{storage.inspect}"
-      end
-      db_filename ||= mod::Storage::FILENAME
-      @reader = mod::Reader.new(db_filename)
-      @writer = mod::Writer.new(db_filename)
+    def initialize(db_filename = nil)
+      db_filename ||= Nostrb::SQLite::Storage::FILENAME
+      @reader = Nostrb::SQLite::Reader.new(db_filename)
+      @writer = Nostrb::SQLite::Writer.new(db_filename)
     end
 
     # accepts a single json array
     # returns a ruby array of response strings (json array)
     def ingest(json)
-      begin
-        a = Nostrb.ary!(Nostrb.parse(json))
-        case a[0]
-        when 'EVENT'
-          [handle_event(Nostrb.check!(a[1], Hash))]
-        when 'REQ'
-          sid = Nostrb.sid!(a[1])
-          filters = a[2..-1].map { |f| Filter.ingest(f) }
-          handle_req(sid, *filters)
-        when 'CLOSE'
-          [handle_close(Nostrb.sid!(a[1]))]
-        else
-          [Relay.notice("unexpected: #{a[0].inspect}")]
-        end
-      rescue StandardError => e
-        # raise e
-        [Relay.error(e)]
+      a = Nostrb.ary!(Nostrb.parse(json))
+      case a[0]
+      when 'EVENT'
+        [handle_event(Nostrb.check!(a[1], Hash))]
+      when 'REQ'
+        sid = Nostrb.sid!(a[1])
+        filters = a[2..-1].map { |f| Filter.ingest(f) }
+        handle_req(sid, *filters)
+      when 'CLOSE'
+        [handle_close(Nostrb.sid!(a[1]))]
+      else
+        [Relay.notice("unexpected: #{a[0].inspect}")]
       end
     end
 
     # return a single response
     def handle_event(hsh)
-      begin
-        edata = SignedEvent.ingest(hsh)
-      rescue Nostrb::Error, KeyError, RuntimeError => e
-        return Relay.error(e)
-      end
+      edata = SignedEvent.ingest(hsh)
 
       if !edata.valid_id?
         return Relay.ok(edata.id, "IdCheck: #{edata.id}", ok: false)
@@ -80,26 +62,22 @@ module Nostrb
         return Relay.ok(edata.id, "SigCheck: #{edata.sig}", ok: false)
       end
 
-      begin
-        case edata.kind
-        when 1, (4..44), (1000..9999)
-          # regular, store all
-          @writer.add_event(edata)
-        when 0, 3, (10_000..19_999)
-          # replaceable, store latest (pubkey, kind)
-          @writer.add_r_event(edata)
-        when 20_000..29_999
-          # ephemeral, don't store
-        when 30_000..30_999
-          # parameterized replaceable, store latest (pubkey, kind, dtag)
-          @writer.add_r_event(edata)
-        else
-          return Relay.ok(edata.id, "kind: #{edata.kind}", ok: false)
-        end
-        Relay.ok(edata.id)
-      rescue RuntimeError => e
-        Relay.error(e)
+      case edata.kind
+      when 1, (4..44), (1000..9999)
+        # regular, store all
+        @writer.add_event(edata)
+      when 0, 3, (10_000..19_999)
+        # replaceable, store latest (pubkey, kind)
+        @writer.add_r_event(edata)
+      when 20_000..29_999
+      # ephemeral, don't store
+      when 30_000..30_999
+        # parameterized replaceable, store latest (pubkey, kind, dtag)
+        @writer.add_r_event(edata)
+      else
+        return Relay.ok(edata.id, "kind: #{edata.kind}", ok: false)
       end
+      Relay.ok(edata.id)
     end
 
     # return an array of response

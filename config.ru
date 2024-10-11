@@ -15,7 +15,15 @@ run do |env|
     while req = cnx.read
       reqs += 1
       puts req.buffer
-      relay.ingest(req.buffer).each { |resp|
+
+      responses = begin
+                    relay.ingest(req.buffer)
+                  rescue StandardError => e
+                    puts format("%s: %s", e.class, e.message)
+                    [Relay.error(e)]
+                  end
+
+      responses.each { |resp|
         resps += 1
         cnx.write Nostrb.json(resp)
       }
