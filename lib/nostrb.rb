@@ -1,10 +1,5 @@
 require 'digest'       # stdlib
 require 'schnorr_sig'  # gem
-begin
-  require 'nostrb/oj'    # try Oj gem
-rescue LoadError
-  require 'nostrb/json'  # fall back to stdlib
-end
 
 module Nostrb
   class Error < RuntimeError; end

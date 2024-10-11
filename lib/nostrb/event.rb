@@ -1,4 +1,5 @@
 require 'nostrb'
+require 'nostrb/json'
 
 module Nostrb
   class Event
