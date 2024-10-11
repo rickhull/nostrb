@@ -19,8 +19,8 @@ which has its own dependencies.
 
 There are optional dependencies, like `rbsecp256k1` for
 better / faster / stronger Schnorr signatures.  `sqlite3` is required for
-Relay operation.  `oj` can be installed for better / faster / stronger JSON
-handling, and `sequel` can be used as a layer on top of SQLite.
+Relay operation, and `oj` can be installed for better / faster / stronger JSON
+handling.
 
 ## Install
 
@@ -65,7 +65,7 @@ Nostrb has three optional dependencies:
 
 * `oj` - An alternative to Ruby's stdlib JSON parser/generator
 * `sqlite3` - necessary/useful only for running a Relay
-* `sequel` - optional layer on top of sqlite3
+* `sequel` - optional interface for analyzing Relay data
 
 If `oj` is not installed, then Ruby's stdlib will be used.  If `sqlite3` is
 not installed, then `require 'nostrb/relay'` will fail with a `LoadError`.
