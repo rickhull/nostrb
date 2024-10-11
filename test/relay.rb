@@ -56,7 +56,9 @@ describe Relay do
       expect {
         Relay.ok(Test::SIGNED.id, "", ok: false)
       }.must_raise FormatError
-      expect { Relay.ok(Test::SIGNED.id, ok: false) }.must_raise FormatError
+      expect {
+        Relay.ok(Test::SIGNED.id, ok: false)
+      }.must_raise FormatError
     end
 
     it "has an EOSE response to conclude a series of EVENT responses" do
@@ -264,10 +266,7 @@ describe Relay do
 
       expect(j[9]).must_equal '{'
       j[9] = ' '
-      expect {
-        resps = r.ingest(j)
-        p resps
-      }.must_raise Nostrb::JSONError # JSON::Error? or Oj::ParseError
+      expect { r.ingest(j) }.must_raise Nostrb::JSONError
     end
 
     # add "stuff":"things"

@@ -18,7 +18,11 @@ run do |env|
 
       responses = begin
                     relay.ingest(req.buffer)
+                  rescue KeyError, Nostrb::Error => e
+                    puts format("%s: %s", e.class, e.message)
+                    [Relay.error(e)]
                   rescue StandardError => e
+                    puts "UNEXPECTED ERROR"
                     puts format("%s: %s", e.class, e.message)
                     [Relay.error(e)]
                   end
