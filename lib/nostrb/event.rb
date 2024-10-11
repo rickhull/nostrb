@@ -9,6 +9,11 @@ module Nostrb
     #   tags: Array[Array[string]]
     #   pubkey: 64 hex chars (32B binary)
 
+    # SignedEvent adds
+    #   created_at: unix seconds, integer
+    #   id: 64 hex chars (32B binary)
+    #   sig: 128 hex chars (64B binary)
+
     # Kind
     #   1, 4..44, 1000..9999: regular -- relay stores all
     #   0, 3: replaceable -- relay stores only the last message from pubkey
@@ -73,13 +78,13 @@ module Nostrb
       created_at = Time.now.to_i
       digest = self.digest(created_at)
       signature = SchnorrSig.sign(Nostrb.key!(sk), digest)
-      SignedEvent.new(content: @content,
-                      kind: @kind,
-                      tags: @tags,
-                      pubkey: self.pubkey,
+      SignedEvent.new(content:    @content,
+                      kind:       @kind,
+                      tags:       @tags,
+                      pubkey:     self.pubkey,
                       created_at: created_at,
-                      id: SchnorrSig.bin2hex(digest),
-                      sig: SchnorrSig.bin2hex(signature))
+                      id:         SchnorrSig.bin2hex(digest),
+                      sig:        SchnorrSig.bin2hex(signature))
     end
 
     #
@@ -122,31 +127,26 @@ module Nostrb
     end
   end
 
-  # SignedEvent
-  # id: 64 hex chars (32B binary)
-  # created_at: unix seconds, integer
-  # sig: 128 hex chars (64B binary)
-
   SignedEvent = ::Data.define(:content, :kind, :tags, :pubkey,
                               :created_at, :id, :sig) do
     def self.ingest(hash)
-      self.new(content: hash.fetch('content'),
-               kind: hash.fetch('kind'),
-               tags: hash.fetch('tags'),
-               pubkey: hash.fetch('pubkey'),
+      self.new(content:    hash.fetch('content'),
+               kind:       hash.fetch('kind'),
+               tags:       hash.fetch('tags'),
+               pubkey:     hash.fetch('pubkey'),
                created_at: hash.fetch('created_at'),
-               id: hash.fetch('id'),
-               sig: hash.fetch('sig'))
+               id:         hash.fetch('id'),
+               sig:        hash.fetch('sig'))
     end
 
     def initialize(content:, kind:, tags:, pubkey:, created_at:, id:, sig:)
-      super(content: Nostrb.txt!(content),
-            kind: Nostrb.kind!(kind),
-            tags: Event.freeze_tags(Nostrb.tags!(tags)),
-            pubkey: Nostrb.pubkey!(pubkey),
+      super(content:    Nostrb.txt!(content),
+            kind:       Nostrb.kind!(kind),
+            tags:       Event.freeze_tags(Nostrb.tags!(tags)),
+            pubkey:     Nostrb.pubkey!(pubkey),
             created_at: Nostrb.int!(created_at),
-            id: Nostrb.id!(id),
-            sig: Nostrb.sig!(sig))
+            id:         Nostrb.id!(id),
+            sig:        Nostrb.sig!(sig))
     end
 
     def serialize

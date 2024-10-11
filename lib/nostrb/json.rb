@@ -1,4 +1,4 @@
-require 'nostrb'
+require 'nostrb' # provides Nostrb::Error
 
 module Nostrb
   OJ = begin
