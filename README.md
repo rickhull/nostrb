@@ -11,17 +11,7 @@ Events are cryptographically signed and verified with
 [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)
 (Nostr Improvement Protocol).
 
-## Rationale
-
-The library is oriented around Nostr Events, which are the fundamental objects
-in the Nostr universe.  It provides everything needed to generate outbound
-events, including digests, pubkeys, and signatures, like for a Nostr client.
-It also handles inbound events and messages, like for a Nostr relay.
-
-While networking is not provided (yet), storage for relays is handled by
-SQLite, with optional Sequel support.
-
-# Usage
+## Usage
 
 This library is provided as a RubyGem.  It has a single direct dependency on
 [schnorr_sig](https://github.com/rickhull/schnorr_sig),
