@@ -198,14 +198,6 @@ c.subscribe(f) { |edata|
 timestamp "Pubkeys: #{pubkeys}"
 puts
 
-puts
-puts
-puts
-puts "################################"
-puts
-puts
-puts
-
 # Marge reqests preferred relay(s)
 f = Filter.new(kind: 10002).since(seconds: 5)
 f.add_authors *pubkeys.keys
@@ -217,6 +209,16 @@ c.subscribe(f) { |edata|
 }
 timestamp "Pubkeys: #{pubkeys}"
 puts
+
+puts
+puts
+puts
+puts "################################"
+puts
+puts
+puts
+
+sleep 0.2
 
 # Marge follows Maggie, Lisa, Bart
 baby_names = %w[maggie lisa bart]

@@ -252,19 +252,22 @@ describe Relay do
     end
 
     # replace leading open brace with space
-    it "handles JSON parse errors with an error notice" do
+    it "handles JSON parse errors with an exception" do
       e = Test.new_event
+      expect(e).must_be_kind_of SignedEvent
+
       j = Nostrb.json(Nostrb::Source.publish(e)).dup
+      expect(j).must_be_kind_of String
+
+      r = Relay.new(DB_FILE)
+      expect(r).must_be_kind_of Relay
+
       expect(j[9]).must_equal '{'
       j[9] = ' '
-      resp = Relay.new(DB_FILE).ingest(j)
-      expect(resp).must_be_kind_of Array
-      expect(resp.length).must_equal 1
-
-      type, msg = *resp.first
-      expect(type).must_equal "NOTICE"
-      expect(msg).must_be_kind_of String
-      expect(msg).wont_be_empty
+      expect {
+        resps = r.ingest(j)
+        p resps
+      }.must_raise Nostrb::JSONError # JSON::Error? or Oj::ParseError
     end
 
     # add "stuff":"things"
@@ -287,7 +290,7 @@ describe Relay do
     end
 
     # remove "tags"
-    it "handles missing fields with an error notice" do
+    it "handles missing fields with an exception" do
       e = Test.new_event
       a = Nostrb::Source.publish(e)
       expect(a[1]).must_be_kind_of Hash
@@ -295,32 +298,22 @@ describe Relay do
       a[1] = a[1].dup
       a[1].delete(:tags)
 
-      resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
-      expect(resp).must_be_kind_of Array
-      expect(resp.length).must_equal 1
-
-      type, msg = *resp.first
-      expect(type).must_equal "NOTICE"
-      expect(msg).must_be_kind_of String
-      expect(msg).wont_be_empty
+      expect {
+        Relay.new(DB_FILE).ingest(Nostrb.json(a))
+      }.must_raise KeyError
     end
 
     # cut "id" in half
-    it "handles field format errors with an error notice" do
+    it "handles field format errors with an exception" do
       e = Test.new_event
       a = Nostrb::Source.publish(e).dup
       expect(a[1]).must_be_kind_of Hash
       a[1] = a[1].dup
       a[1][:id] = a[1].fetch(:id).slice(0, 32)
 
-      resp = Relay.new(DB_FILE).ingest(Nostrb.json(a))
-      expect(resp).must_be_kind_of Array
-      expect(resp.length).must_equal 1
-
-      type, msg = *resp.first
-      expect(type).must_equal "NOTICE"
-      expect(msg).must_be_kind_of String
-      expect(msg).wont_be_empty
+      expect {
+        Relay.new(DB_FILE).ingest(Nostrb.json(a))
+      }.must_raise Nostrb::Error
     end
 
     # random "sig"
